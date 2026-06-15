@@ -1,9 +1,12 @@
-# Next.js no Netlify: o build é detectado automaticamente e o plugin oficial
-# (@netlify/plugin-nextjs) cuida do roteamento/serving. Não definimos "publish"
-# manualmente (isso quebra o roteamento do Next). Variáveis NEXT_PUBLIC_SUPABASE_*
-# são configuradas por site no painel do Netlify.
+# Next.js no Netlify. Declaramos o plugin oficial explicitamente porque o site
+# foi criado originalmente como import estático (sem detecção automática do Next).
+# O plugin cuida do build output, roteamento e funções. NEXT_PUBLIC_SUPABASE_*
+# são configuradas por site no painel do Netlify (staging x produção).
 [build]
   command = "next build"
 
 [build.environment]
   NODE_VERSION = "22"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
