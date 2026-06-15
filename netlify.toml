@@ -1,0 +1,7 @@
+# Build do Next.js no Netlify. O plugin oficial (@netlify/plugin-nextjs)
+# é detectado automaticamente. As variáveis NEXT_PUBLIC_SUPABASE_* são
+# configuradas por site no painel do Netlify (staging usa o banco de
+# staging; produção usa o banco de produção).
+[build]
+  command = "npm run build"
+  publish = ".next"
