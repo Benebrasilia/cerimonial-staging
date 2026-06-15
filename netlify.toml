@@ -1,9 +1,10 @@
-# Next.js no Netlify. Declaramos o plugin oficial explicitamente porque o site
-# foi criado originalmente como import estático (sem detecção automática do Next).
-# O plugin cuida do build output, roteamento e funções. NEXT_PUBLIC_SUPABASE_*
-# são configuradas por site no painel do Netlify (staging x produção).
+# Configuração canônica de Next.js no Netlify.
+# - publish ".next": saída do build (o plugin transforma em funções + estáticos)
+# - plugin oficial declarado explicitamente (o site foi criado como import estático)
+# NEXT_PUBLIC_SUPABASE_* ficam por site no painel (staging x produção).
 [build]
   command = "next build"
+  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "22"
