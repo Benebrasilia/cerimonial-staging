@@ -74,6 +74,7 @@ export default function Painel({ slug }: { slug: string }) {
   const [erro, setErro] = useState("");
   const [hInput, setHInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [enviandoEmail, setEnviandoEmail] = useState(false);
 
   const rows = data?.rows || [];
   const stats = useMemo(() => computar(rows), [rows]);
@@ -104,6 +105,13 @@ export default function Painel({ slug }: { slug: string }) {
     if (!confirm(`Excluir a resposta de ${nome}? Isso remove a submissão inteira.`)) return;
     await supabase.rpc("painel_excluir", { p_slug: slug, p_pwd: pwd, p_id: id });
     await recarregar();
+  }
+  async function enviarEmail() {
+    setEnviandoEmail(true);
+    const { data: r, error } = await supabase.functions.invoke("relatorio", { body: { slug, pwd } });
+    setEnviandoEmail(false);
+    const err = error?.message || (r && (r as { error?: string }).error);
+    alert(err ? "Não consegui enviar: " + err : "Relatório enviado por e-mail! 📧");
   }
   function megaCartaz() {
     const bloco = (titulo: string, arr: Row[]) => {
@@ -217,6 +225,7 @@ export default function Painel({ slug }: { slug: string }) {
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2">
+          <button onClick={enviarEmail} disabled={enviandoEmail} className="flex-1 rounded-lg bg-green-700 py-3 text-sm font-bold text-white disabled:opacity-50">{enviandoEmail ? "Enviando…" : "📧 Enviar relatório"}</button>
           <button onClick={megaCartaz} className="flex-1 rounded-lg bg-amber-500 py-3 text-sm font-bold text-amber-950">🖼️ Gerar prompt do Mega Cartaz</button>
           <button onClick={recarregar} className="flex-1 rounded-lg border border-green-600 py-3 text-sm font-bold text-green-700">🔄 Atualizar agora</button>
         </div>
