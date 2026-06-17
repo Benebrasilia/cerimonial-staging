@@ -1,0 +1,4 @@
+-- (Espelho das mudanças aplicadas via MCP no staging)
+-- Senha do painel, RPCs do painel (dados/config/excluir), relatório por e-mail
+-- (report_emails/report_from), lista de convidados + links, e agenda (pg_cron + pg_net).
+-- Mantido como referência; o estado real do banco foi aplicado por migração no Supabase.

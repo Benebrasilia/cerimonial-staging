@@ -10,7 +10,7 @@ type Row = {
   na: number | null; adultos: string | null; nc: number | null; criancas: string | null;
   mensagem: string | null; foto: string | null; prev: string | null;
 };
-type Dados = { ok?: boolean; error?: string; horario?: string; ultimo_passo?: boolean; visitas?: { total: number; unicos: number }; rows?: Row[] };
+type Dados = { ok?: boolean; error?: string; horario?: string; ultimo_passo?: boolean; visitas?: { total: number; unicos: number }; report_ativo?: boolean; report_horarios?: string; report_dias?: string; rows?: Row[] };
 type ConvRow = { id: string; token: string; nome: string; telefone: string | null; num_adultos: number; num_criancas: number; respondido: boolean; presenca: string | null };
 
 const norm = (s: string) => (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
@@ -79,6 +79,10 @@ export default function Painel({ slug }: { slug: string }) {
   const [convs, setConvs] = useState<ConvRow[]>([]);
   const [travados, setTravados] = useState(false);
   const [cNome, setCNome] = useState(""); const [cTel, setCTel] = useState(""); const [cNa, setCNa] = useState(2); const [cNc, setCNc] = useState(0);
+  const [agAtivo, setAgAtivo] = useState(false);
+  const [agHorarios, setAgHorarios] = useState<string[]>([]);
+  const [agDias, setAgDias] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+  const [novaHora, setNovaHora] = useState("12:00");
 
   const rows = data?.rows || [];
   const stats = useMemo(() => computar(rows), [rows]);
@@ -86,7 +90,12 @@ export default function Painel({ slug }: { slug: string }) {
   async function carregar(senha: string) {
     const { data: d, error } = await supabase.rpc("painel_dados", { p_slug: slug, p_pwd: senha });
     if (error || !d || (d as Dados).error) { setErro("Senha incorreta."); return false; }
-    setData(d as Dados); setHInput((d as Dados).horario || ""); setErro(""); return true;
+    const dd = d as Dados;
+    setData(dd); setHInput(dd.horario || "");
+    setAgAtivo(!!dd.report_ativo);
+    setAgHorarios((dd.report_horarios || "").split(",").map((x) => x.trim()).filter(Boolean));
+    setAgDias((dd.report_dias || "").split(",").map((x) => parseInt(x, 10)).filter((x) => !isNaN(x)));
+    setErro(""); return true;
   }
   async function entrar() {
     setErro("");
@@ -115,6 +124,14 @@ export default function Painel({ slug }: { slug: string }) {
   }
   async function delConvidado(id: string, nome: string) { if (!confirm(`Remover convidado ${nome}?`)) return; await supabase.rpc("painel_convidado_del", { p_slug: slug, p_pwd: pwd, p_id: id }); await loadConvidados(pwd); }
   async function toggleTravado(v: boolean) { await supabase.rpc("painel_set_travado", { p_slug: slug, p_pwd: pwd, p_val: v }); setTravados(v); }
+  function toggleDia(d: number) { setAgDias((p) => p.includes(d) ? p.filter((x) => x !== d) : [...p, d].sort((a, b) => a - b)); }
+  function addHora() { const h = novaHora.trim(); if (/^\d{1,2}:\d{2}$/.test(h) && !agHorarios.includes(h)) setAgHorarios((p) => [...p, h].sort()); }
+  function rmHora(h: string) { setAgHorarios((p) => p.filter((x) => x !== h)); }
+  async function salvarAgenda() {
+    setBusy(true);
+    await supabase.rpc("painel_set_agenda", { p_slug: slug, p_pwd: pwd, p_ativo: agAtivo, p_horarios: agHorarios.join(","), p_dias: agDias.join(",") });
+    await recarregar(); setBusy(false); alert("Agenda salva!");
+  }
   async function salvarHorario(valor: string) {
     setBusy(true);
     await supabase.rpc("painel_set_config", { p_slug: slug, p_pwd: pwd, p_horario: valor, p_ultimo_passo: null });
@@ -220,6 +237,31 @@ export default function Painel({ slug }: { slug: string }) {
             <button disabled={busy} onClick={() => toggleUltimo(true)} className="rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Ativar</button>
             <button disabled={busy} onClick={() => toggleUltimo(false)} className="rounded-lg border border-orange-400 px-3 py-2 text-sm text-orange-700">Desativar</button>
           </div>
+        </div>
+
+        <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 p-3">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input type="checkbox" checked={agAtivo} onChange={(e) => setAgAtivo(e.target.checked)} />
+            📅 Enviar relatório automático por e-mail
+          </label>
+          <div className={agAtivo ? "mt-2" : "mt-2 pointer-events-none opacity-50"}>
+            <div className="text-xs text-gray-600">Dias da semana:</div>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((lbl, i) => (
+                <button key={i} type="button" onClick={() => toggleDia(i)} className={`rounded-lg px-2.5 py-1 text-xs ${agDias.includes(i) ? "bg-green-700 text-white" : "border border-gray-300 bg-white text-gray-600"}`}>{lbl}</button>
+              ))}
+            </div>
+            <div className="mt-2 text-xs text-gray-600">Horários:</div>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              {agHorarios.map((h) => (
+                <span key={h} className="inline-flex items-center gap-1 rounded-lg border bg-white px-2 py-1 text-xs">{h}<button type="button" onClick={() => rmHora(h)} className="text-orange-600">✕</button></span>
+              ))}
+              <input type="time" value={novaHora} onChange={(e) => setNovaHora(e.target.value)} className="rounded border border-gray-300 px-2 py-1 text-xs" />
+              <button type="button" onClick={addHora} className="rounded-lg border border-gray-300 px-2 py-1 text-xs">+ adicionar</button>
+            </div>
+          </div>
+          <button disabled={busy} onClick={salvarAgenda} className="mt-3 rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Salvar agenda</button>
+          <p className="mt-2 text-xs text-gray-500">Fuso de Brasília. Começa a enviar quando o domínio do remetente estiver verificado.</p>
         </div>
 
         <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-green-700">📨 Convidados ({convs.length})</h2>
