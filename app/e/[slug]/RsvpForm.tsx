@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { formatarData, type EventoPublico } from "@/lib/eventoPublico";
 
@@ -16,9 +16,22 @@ export default function RsvpForm({ evento }: { evento: EventoPublico }) {
   const [adultos, setAdultos] = useState<string[]>([""]);
   const [criancas, setCriancas] = useState<Crianca[]>([]);
   const [mensagem, setMensagem] = useState("");
+  const [foto, setFoto] = useState<File | null>(null);
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
+
+  // Contador de visitas: id persistente por dispositivo, registro fire-and-forget.
+  useEffect(() => {
+    try {
+      const KEY = "cerimonial_vid";
+      let vid = localStorage.getItem(KEY) || "";
+      if (!vid) { vid = Date.now().toString(36) + Math.random().toString(36).slice(2, 10); localStorage.setItem(KEY, vid); }
+      supabase.from("visitas")
+        .insert({ evento_id: evento.id, vid, ua: (navigator.userAgent || "").slice(0, 200) })
+        .then(() => {}, () => {});
+    } catch { /* nunca quebra o formulário */ }
+  }, []);
 
   const temRecado = evento.ultimo_passo !== false;
   const fluxo = useMemo(() => {
@@ -63,10 +76,27 @@ export default function RsvpForm({ evento }: { evento: EventoPublico }) {
   }
   function voltar() { setErro(""); setPos((p) => Math.max(0, p - 1)); }
 
+  async function uploadFoto(): Promise<string | null> {
+    if (!foto) return null;
+    try {
+      const ext = ((foto.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "")) || "jpg";
+      const path = `${evento.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const up = await supabase.storage.from("fotos").upload(path, foto, {
+        upsert: false, contentType: foto.type || "image/jpeg",
+      });
+      if (up.error) return null;
+      const { data } = supabase.storage.from("fotos").getPublicUrl(path);
+      return data.publicUrl || null;
+    } catch {
+      return null;
+    }
+  }
+
   async function enviar(quer: boolean) {
     setEnviando(true); setErro("");
     const adStr = quer ? adultos.map((a) => a.trim()).filter(Boolean).join(", ") : "";
     const crStr = quer ? criancas.map((c) => c.nome.trim() + (c.idade ? ` (${c.idade} anos)` : "")).filter(Boolean).join(", ") : "";
+    const foto_url = await uploadFoto();
     const { error } = await supabase.from("confirmacoes").insert({
       evento_id: evento.id,
       nome: nome.trim(),
@@ -76,6 +106,7 @@ export default function RsvpForm({ evento }: { evento: EventoPublico }) {
       num_criancas: quer ? criancas.length : null,
       criancas: crStr || null,
       mensagem: mensagem.trim() || null,
+      foto_url: foto_url,
     });
     setEnviando(false);
     if (error) { setErro("Não foi possível enviar: " + error.message); return; }
@@ -179,8 +210,13 @@ export default function RsvpForm({ evento }: { evento: EventoPublico }) {
             <label className="mb-1 block text-sm font-medium">{vai ? "Deixe um recado/grito (opcional)" : "Deixa um recado mesmo assim (opcional)"}</label>
             <textarea value={mensagem} onChange={(e) => setMensagem(e.target.value)} rows={3}
               placeholder="Escreva aqui…"
-              className="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600" />
-            {erro && <p className="text-sm text-red-600">{erro}</p>}
+              className="mb-3 w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600" />
+            <label className="mb-1 block text-sm font-medium">Foto pro telão (opcional)</label>
+            <input type="file" accept="image/*"
+              onChange={(e) => setFoto(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
+              className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-green-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-green-800" />
+            {foto && <p className="mt-1 text-xs text-gray-500">Foto selecionada ✓</p>}
+            {erro && <p className="mt-2 text-sm text-red-600">{erro}</p>}
             <Navegacao onBack={voltar} onNext={avancar} ultimo={ultimoPasso} vai={vai} enviando={enviando} />
           </div>
         )}
