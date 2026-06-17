@@ -11,6 +11,7 @@ type Row = {
   mensagem: string | null; foto: string | null; prev: string | null;
 };
 type Dados = { ok?: boolean; error?: string; horario?: string; ultimo_passo?: boolean; visitas?: { total: number; unicos: number }; rows?: Row[] };
+type ConvRow = { id: string; token: string; nome: string; telefone: string | null; num_adultos: number; num_criancas: number; respondido: boolean; presenca: string | null };
 
 const norm = (s: string) => (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
 const toks = (s: string) => norm(s).split(" ").filter(Boolean);
@@ -75,6 +76,9 @@ export default function Painel({ slug }: { slug: string }) {
   const [hInput, setHInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [enviandoEmail, setEnviandoEmail] = useState(false);
+  const [convs, setConvs] = useState<ConvRow[]>([]);
+  const [travados, setTravados] = useState(false);
+  const [cNome, setCNome] = useState(""); const [cTel, setCTel] = useState(""); const [cNa, setCNa] = useState(2); const [cNc, setCNc] = useState(0);
 
   const rows = data?.rows || [];
   const stats = useMemo(() => computar(rows), [rows]);
@@ -87,10 +91,30 @@ export default function Painel({ slug }: { slug: string }) {
   async function entrar() {
     setErro("");
     const ok = await carregar(pwd);
-    if (ok) setAuthed(true);
+    if (ok) { setAuthed(true); await loadConvidados(pwd); }
   }
-  async function recarregar() { if (authed) await carregar(pwd); }
+  async function recarregar() { if (authed) { await carregar(pwd); await loadConvidados(pwd); } }
 
+  async function loadConvidados(senha: string) {
+    const { data } = await supabase.rpc("painel_convidados", { p_slug: slug, p_pwd: senha });
+    const d = data as { ok?: boolean; travados?: boolean; convidados?: ConvRow[] } | null;
+    if (d && d.ok) { setConvs(d.convidados || []); setTravados(!!d.travados); }
+  }
+  function linkDe(token: string) { return `${typeof window !== "undefined" ? window.location.origin : ""}/e/${slug}?c=${token}`; }
+  function waDe(c: ConvRow) {
+    const tel = (c.telefone || "").replace(/\D/g, "");
+    const full = tel.startsWith("55") ? tel : "55" + tel;
+    const msg = `🇧🇷 Oi, ${c.nome}! Você é meu convidado pro Arraiá rumo ao Hexa! Confirme sua presença (já no seu nome): ${linkDe(c.token)}`;
+    return `https://wa.me/${full}?text=${encodeURIComponent(msg)}`;
+  }
+  function copiar(token: string) { try { navigator.clipboard?.writeText(linkDe(token)); alert("Link copiado!"); } catch { alert(linkDe(token)); } }
+  async function addConvidado() {
+    if (!cNome.trim()) { alert("Coloque o nome do convidado."); return; }
+    await supabase.rpc("painel_convidado_add", { p_slug: slug, p_pwd: pwd, p_nome: cNome, p_tel: cTel, p_na: cNa, p_nc: cNc });
+    setCNome(""); setCTel(""); await loadConvidados(pwd);
+  }
+  async function delConvidado(id: string, nome: string) { if (!confirm(`Remover convidado ${nome}?`)) return; await supabase.rpc("painel_convidado_del", { p_slug: slug, p_pwd: pwd, p_id: id }); await loadConvidados(pwd); }
+  async function toggleTravado(v: boolean) { await supabase.rpc("painel_set_travado", { p_slug: slug, p_pwd: pwd, p_val: v }); setTravados(v); }
   async function salvarHorario(valor: string) {
     setBusy(true);
     await supabase.rpc("painel_set_config", { p_slug: slug, p_pwd: pwd, p_horario: valor, p_ultimo_passo: null });
@@ -196,6 +220,35 @@ export default function Painel({ slug }: { slug: string }) {
             <button disabled={busy} onClick={() => toggleUltimo(true)} className="rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Ativar</button>
             <button disabled={busy} onClick={() => toggleUltimo(false)} className="rounded-lg border border-orange-400 px-3 py-2 text-sm text-orange-700">Desativar</button>
           </div>
+        </div>
+
+        <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-green-700">📨 Convidados ({convs.length})</h2>
+        <label className="mt-1 flex items-center gap-2 text-sm text-gray-600">
+          <input type="checkbox" checked={travados} onChange={(e) => toggleTravado(e.target.checked)} />
+          Travar as quantidades (o convidado não altera adultos/crianças)
+        </label>
+        <div className="mt-2 flex flex-wrap items-end gap-2 rounded-lg border bg-stone-50 p-3">
+          <div className="min-w-[140px] flex-1"><label className="text-xs text-gray-500">Nome</label><input value={cNome} onChange={(e) => setCNome(e.target.value)} placeholder="Nome do convidado" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
+          <div className="min-w-[130px]"><label className="text-xs text-gray-500">WhatsApp (DDD)</label><input value={cTel} onChange={(e) => setCTel(e.target.value)} placeholder="61 99999-9999" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
+          <div><label className="block text-xs text-gray-500">Adultos</label><select value={cNa} onChange={(e) => setCNa(parseInt(e.target.value, 10))} className="rounded border border-gray-300 px-2 py-1.5 text-sm">{[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}</select></div>
+          <div><label className="block text-xs text-gray-500">Crianças</label><select value={cNc} onChange={(e) => setCNc(parseInt(e.target.value, 10))} className="rounded border border-gray-300 px-2 py-1.5 text-sm">{[0, 1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}</select></div>
+          <button onClick={addConvidado} className="rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white">Adicionar</button>
+        </div>
+        <div className="mt-2 space-y-1.5">
+          {convs.map((c) => (
+            <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-white px-3 py-2 text-sm">
+              <div className="min-w-[150px]">
+                <b>{c.nome}</b> <span className="text-xs text-gray-400">({c.num_adultos}A{c.num_criancas > 0 ? ` · ${c.num_criancas}C` : ""})</span><br />
+                {c.respondido ? <span className="text-xs text-green-700">✅ respondeu{c.presenca ? ` (${(c.presenca || "").indexOf("Sim") === 0 ? "vai" : "não vai"})` : ""}</span> : <span className="text-xs text-orange-600">⏳ pendente</span>}
+              </div>
+              <div className="flex flex-none gap-1.5">
+                {c.telefone && <a href={waDe(c)} target="_blank" rel="noreferrer" className="rounded-lg bg-green-600 px-2.5 py-1.5 text-xs font-semibold text-white">WhatsApp</a>}
+                <button onClick={() => copiar(c.token)} className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs">copiar link</button>
+                <button onClick={() => delConvidado(c.id, c.nome)} className="rounded-lg border border-orange-400 px-2.5 py-1.5 text-xs text-orange-700">remover</button>
+              </div>
+            </div>
+          ))}
+          {!convs.length && <p className="text-sm text-gray-400">Nenhum convidado cadastrado ainda.</p>}
         </div>
 
         <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-green-700">🧑 Adultos confirmados ({stats.totalAd})</h2>

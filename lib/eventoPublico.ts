@@ -43,3 +43,33 @@ export function formatarData(data: string | null): string {
     return data;
   }
 }
+
+export type Convidado = {
+  convidado_id: string;
+  evento_slug: string;
+  nome: string;
+  num_adultos: number;
+  num_criancas: number;
+  travado: boolean;
+  respondido: boolean;
+};
+
+export async function getConvidado(token: string): Promise<Convidado | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key || !token) return null;
+  try {
+    const res = await fetch(`${url}/rest/v1/rpc/convidado_por_token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ p_token: token }),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (!d || d.error || !d.ok) return null;
+    return d as Convidado;
+  } catch {
+    return null;
+  }
+}

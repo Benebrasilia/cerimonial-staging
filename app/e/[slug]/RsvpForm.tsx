@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase";
-import { formatarData, type EventoPublico } from "@/lib/eventoPublico";
+import { formatarData, type EventoPublico, type Convidado } from "@/lib/eventoPublico";
 
 const supabase = createClient();
 const words = (s: string) => (s || "").trim().split(/\s+/).filter(Boolean);
@@ -93,19 +93,20 @@ const ARR_CSS = `
 @media (max-width:620px){.arr .card{padding:24px 18px 30px;border-width:2px;}.arr .t1{font-size:38px;}.arr .scr{font-size:30px;}.arr .t2{font-size:46px;letter-spacing:3px;}.arr .selo{font-size:18px;padding:7px 16px;}.arr .subhdr{font-size:14px;}.arr label.q{font-size:18px;}.arr .btn{font-size:16px;letter-spacing:0;padding:13px 8px;}}
 `;
 
-export default function RsvpForm({ evento }: { evento: EventoPublico }) {
+export default function RsvpForm({ evento, convidado }: { evento: EventoPublico; convidado?: Convidado | null }) {
   const cfg = (evento.config || {}) as Record<string, unknown>;
   const arraia = cfg.tema === "arraia";
+  const travado = !!convidado?.travado;
   const titulo = (Array.isArray(cfg.titulo) ? cfg.titulo : []) as string[];
   const subtitulo = (cfg.subtitulo as string) || "";
   const saveTheDate = cfg.save_the_date === true && !(evento.horario && evento.horario.trim());
   const musicId = (cfg.musica_youtube as string) || "";
 
   const [pos, setPos] = useState(0);
-  const [nome, setNome] = useState("");
+  const [nome, setNome] = useState(convidado?.nome || "");
   const [vai, setVai] = useState<boolean | null>(null);
-  const [adultos, setAdultos] = useState<string[]>([""]);
-  const [criancas, setCriancas] = useState<Crianca[]>([]);
+  const [adultos, setAdultos] = useState<string[]>(() => convidado ? Array.from({ length: Math.max(convidado.num_adultos, 1) }, (_, i) => i === 0 ? convidado.nome : "") : [""]);
+  const [criancas, setCriancas] = useState<Crianca[]>(() => convidado ? Array.from({ length: Math.max(convidado.num_criancas, 0) }, () => ({ nome: "", idade: "" })) : []);
   const [mensagem, setMensagem] = useState("");
   const [foto, setFoto] = useState<File | null>(null);
   const [fotoPrev, setFotoPrev] = useState<string>("");
@@ -180,7 +181,7 @@ export default function RsvpForm({ evento }: { evento: EventoPublico }) {
       evento_id: evento.id, nome: nome.trim(), presenca: quer ? "Sim" : "Não",
       num_adultos: quer ? adultos.length : null, adultos: adStr || null,
       num_criancas: quer ? criancas.length : null, criancas: crStr || null,
-      mensagem: mensagem.trim() || null, foto_url,
+      mensagem: mensagem.trim() || null, foto_url, convidado_id: convidado?.convidado_id || null,
     });
     setEnviando(false);
     if (error) { setErro("Não foi possível enviar: " + error.message); return; }
@@ -227,7 +228,7 @@ export default function RsvpForm({ evento }: { evento: EventoPublico }) {
                 <div className="field">
                   <label className="q">Quantos adultos vão? (incluindo você)</label>
                   <div className="qsub">💡 Uma resposta por família/grupo, incluindo todos juntos — assim ninguém é contado em dobro.</div>
-                  <select value={adultos.length} onChange={(e) => { const n = parseInt(e.target.value, 10); setAdultos((prev) => Array.from({ length: n }, (_, i) => i === 0 ? (prev[0] || nome.trim()) : (prev[i] || ""))); }}>
+                  <select value={adultos.length} disabled={travado} onChange={(e) => { const n = parseInt(e.target.value, 10); setAdultos((prev) => Array.from({ length: n }, (_, i) => i === 0 ? (prev[0] || nome.trim()) : (prev[i] || ""))); }}>
                     {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
                   </select>
                   <div className="names">
@@ -247,7 +248,7 @@ export default function RsvpForm({ evento }: { evento: EventoPublico }) {
                 <div className="field">
                   <label className="q">Quantas crianças vão? (até 12 anos)</label>
                   <div className="qsub">Coloque nome e sobrenome de cada uma — ajuda a não contar repetido.</div>
-                  <select value={criancas.length} onChange={(e) => { const n = parseInt(e.target.value, 10); setCriancas((prev) => Array.from({ length: n }, (_, i) => prev[i] || { nome: "", idade: "" })); }}>
+                  <select value={criancas.length} disabled={travado} onChange={(e) => { const n = parseInt(e.target.value, 10); setCriancas((prev) => Array.from({ length: n }, (_, i) => prev[i] || { nome: "", idade: "" })); }}>
                     {[0, 1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n === 0 ? "Nenhuma" : n}</option>)}
                   </select>
                   <div className="names">
@@ -357,7 +358,7 @@ export default function RsvpForm({ evento }: { evento: EventoPublico }) {
         {passo === "adultos" && (
           <div>
             <label className="mb-1 block text-sm font-medium">Quantos adultos vão? (incluindo você)</label>
-            <select value={adultos.length} onChange={(e) => { const n = parseInt(e.target.value, 10); setAdultos((prev) => Array.from({ length: n }, (_, i) => i === 0 ? (prev[0] || nome.trim()) : (prev[i] || ""))); }} className="mb-3 w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600">
+            <select value={adultos.length} disabled={travado} onChange={(e) => { const n = parseInt(e.target.value, 10); setAdultos((prev) => Array.from({ length: n }, (_, i) => i === 0 ? (prev[0] || nome.trim()) : (prev[i] || ""))); }} className="mb-3 w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600">
               {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
             {adultos.map((a, i) => (<input key={i} value={a} onChange={(e) => setAdultos((prev) => prev.map((v, k) => k === i ? e.target.value : v))} placeholder={`Adulto ${i + 1}${i === 0 ? " (você)" : ""} — nome e sobrenome`} className="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600" />))}
@@ -368,7 +369,7 @@ export default function RsvpForm({ evento }: { evento: EventoPublico }) {
         {passo === "criancas" && (
           <div>
             <label className="mb-1 block text-sm font-medium">Quantas crianças vão? (até 12 anos)</label>
-            <select value={criancas.length} onChange={(e) => { const n = parseInt(e.target.value, 10); setCriancas((prev) => Array.from({ length: n }, (_, i) => prev[i] || { nome: "", idade: "" })); }} className="mb-3 w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600">
+            <select value={criancas.length} disabled={travado} onChange={(e) => { const n = parseInt(e.target.value, 10); setCriancas((prev) => Array.from({ length: n }, (_, i) => prev[i] || { nome: "", idade: "" })); }} className="mb-3 w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600">
               {[0, 1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
             {criancas.map((c, i) => (
