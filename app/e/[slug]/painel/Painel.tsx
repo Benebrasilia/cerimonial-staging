@@ -1,0 +1,226 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase";
+
+const supabase = createClient();
+
+type Row = {
+  id: string; ts: number; nome: string; presenca: string;
+  na: number | null; adultos: string | null; nc: number | null; criancas: string | null;
+  mensagem: string | null; foto: string | null; prev: string | null;
+};
+type Dados = { ok?: boolean; error?: string; horario?: string; ultimo_passo?: boolean; visitas?: { total: number; unicos: number }; rows?: Row[] };
+
+const norm = (s: string) => (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
+const toks = (s: string) => norm(s).split(" ").filter(Boolean);
+function same(a: string, b: string) {
+  const ta = toks(a), tb = toks(b);
+  if (!ta.length || !tb.length) return false;
+  if (ta[0] !== tb[0]) return false;
+  const sa = ta.slice(1), sb = tb.slice(1);
+  if (!sa.length || !sb.length) return norm(a) === norm(b);
+  for (const x of sa) if (sb.includes(x)) return true;
+  return false;
+}
+function imgUrl(u: string | null): string {
+  if (!u) return "";
+  const m = String(u).match(/[-\w]{25,}/);
+  return m ? `https://drive.google.com/thumbnail?id=${m[0]}&sz=w600` : u;
+}
+
+type USet = { name: string; disp: string; src: string[] };
+function addU(set: USet[], name: string, src: string, disp?: string) {
+  for (const e of set) { if (same(e.name, name)) { if (!e.src.includes(src)) e.src.push(src); return; } }
+  set.push({ name, disp: disp || name, src: [src] });
+}
+
+function computar(rows: Row[]) {
+  const ordered = [...rows].sort((a, b) => a.ts - b.ts);
+  const ppl: Row[] = [];
+  for (const r of ordered) {
+    let idx = -1;
+    for (let i = 0; i < ppl.length; i++) { if (same(ppl[i].nome, r.nome) || (r.prev && same(ppl[i].nome, r.prev))) { idx = i; break; } }
+    if (idx >= 0) ppl[idx] = r; else ppl.push(r);
+  }
+  const adultSet: USet[] = [], childSet: USet[] = [];
+  let unAd = 0, unCr = 0;
+  const naoVai: string[] = [], msgVai: Row[] = [], msgNao: Row[] = [];
+  const ageCount: Record<string, number> = {};
+  for (const p of ppl) {
+    if ((p.presenca || "").indexOf("Sim") === 0) {
+      const an = (p.adultos || "").split(",").map((s) => s.trim()).filter(Boolean);
+      const cn = (p.criancas || "").split(",").map((s) => s.trim()).filter(Boolean);
+      an.forEach((n) => addU(adultSet, n, p.nome, n));
+      cn.forEach((n) => { const base = n.replace(/\s*\(.*\)\s*$/, "").trim(); addU(childSet, base, p.nome, n); const mm = n.match(/\((\d+)/); const a = mm ? mm[1] : "?"; ageCount[a] = (ageCount[a] || 0) + 1; });
+      unAd += Math.max(0, (p.na || 0) - an.length);
+      unCr += Math.max(0, (p.nc || 0) - cn.length);
+      if ((p.mensagem || "").trim() || p.foto) msgVai.push(p);
+    } else if ((p.presenca || "").indexOf("N") === 0) {
+      naoVai.push(p.nome);
+      if ((p.mensagem || "").trim() || p.foto) msgNao.push(p);
+    }
+  }
+  const totalAd = adultSet.length + unAd, totalCr = childSet.length + unCr;
+  const ageKeys = Object.keys(ageCount).sort((a, b) => a === "?" ? 1 : b === "?" ? -1 : Number(a) - Number(b));
+  const ageStr = ageKeys.map((a) => (a === "?" ? "sem idade" : a + (a === "1" ? " ano" : " anos")) + ": " + ageCount[a]).join(" · ");
+  return { totalAd, totalCr, unAd, unCr, adultSet, childSet, naoVai, msgVai, msgNao, ageStr };
+}
+
+export default function Painel({ slug }: { slug: string }) {
+  const [pwd, setPwd] = useState("");
+  const [authed, setAuthed] = useState(false);
+  const [data, setData] = useState<Dados | null>(null);
+  const [erro, setErro] = useState("");
+  const [hInput, setHInput] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const rows = data?.rows || [];
+  const stats = useMemo(() => computar(rows), [rows]);
+
+  async function carregar(senha: string) {
+    const { data: d, error } = await supabase.rpc("painel_dados", { p_slug: slug, p_pwd: senha });
+    if (error || !d || (d as Dados).error) { setErro("Senha incorreta."); return false; }
+    setData(d as Dados); setHInput((d as Dados).horario || ""); setErro(""); return true;
+  }
+  async function entrar() {
+    setErro("");
+    const ok = await carregar(pwd);
+    if (ok) setAuthed(true);
+  }
+  async function recarregar() { if (authed) await carregar(pwd); }
+
+  async function salvarHorario(valor: string) {
+    setBusy(true);
+    await supabase.rpc("painel_set_config", { p_slug: slug, p_pwd: pwd, p_horario: valor, p_ultimo_passo: null });
+    await recarregar(); setBusy(false);
+  }
+  async function toggleUltimo(v: boolean) {
+    setBusy(true);
+    await supabase.rpc("painel_set_config", { p_slug: slug, p_pwd: pwd, p_horario: null, p_ultimo_passo: v });
+    await recarregar(); setBusy(false);
+  }
+  async function excluir(id: string, nome: string) {
+    if (!confirm(`Excluir a resposta de ${nome}? Isso remove a submissão inteira.`)) return;
+    await supabase.rpc("painel_excluir", { p_slug: slug, p_pwd: pwd, p_id: id });
+    await recarregar();
+  }
+  function megaCartaz() {
+    const bloco = (titulo: string, arr: Row[]) => {
+      let s = `=== ${titulo} ===\n`;
+      if (!arr.length) s += "(nenhum recado ainda)\n";
+      else arr.forEach((m, i) => { s += `${i + 1}) ${m.nome}\n   Foto: ${m.foto ? imgUrl(m.foto) : "(sem foto)"}\n   Mensagem: ${(m.mensagem || "").trim() ? '"' + m.mensagem + '"' : "(só foto)"}\n`; });
+      return s + "\n";
+    };
+    let p = 'Crie um MEGA CARTAZ / mosaico de torcida para um telão (tema arraiá + cores do Brasil). Título: "FORÇA, BRASIL — RUMO AO HEXA!". Um card por torcedor com a FOTO e a MENSAGEM.\n\n';
+    p += bloco("TORCEDORES PRESENTES (quem vai)", stats.msgVai);
+    p += bloco("TORCENDO DE LONGE (quem não vai)", stats.msgNao);
+    const blob = new Blob([p], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "prompt-mega-cartaz.txt"; a.click();
+  }
+
+  if (!authed) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-stone-100 px-4">
+        <div className="w-full max-w-sm rounded-2xl bg-white p-7 text-center shadow-sm">
+          <h1 className="text-xl font-bold text-green-700">Painel dos organizadores</h1>
+          <p className="mt-1 text-sm text-gray-500">{slug}</p>
+          <input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} onKeyDown={(e) => e.key === "Enter" && entrar()}
+            placeholder="Senha" className="mt-4 w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600" />
+          <button onClick={entrar} className="mt-3 w-full rounded-lg bg-green-700 py-2.5 font-semibold text-white hover:bg-green-800">Entrar</button>
+          {erro && <p className="mt-3 text-sm text-red-600">{erro}</p>}
+        </div>
+      </div>
+    );
+  }
+
+  const v = data?.visitas;
+  const Grid = ({ items }: { items: string[] }) => items.length ? (
+    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm sm:grid-cols-3">
+      {items.map((t, i) => <div key={i} className="border-b border-dotted border-stone-200 py-0.5"><span className="mr-1 font-bold text-gray-400">{i + 1}.</span>{t}</div>)}
+    </div>
+  ) : <span className="text-gray-400">—</span>;
+
+  const Msgs = ({ arr }: { arr: Row[] }) => arr.length ? (
+    <div className="space-y-2">
+      {arr.map((m) => (
+        <div key={m.id} className="overflow-hidden rounded border-l-4 border-amber-500 bg-amber-50 p-2 text-sm">
+          {m.foto && <a href={imgUrl(m.foto)} target="_blank" rel="noreferrer"><img src={imgUrl(m.foto)} referrerPolicy="no-referrer" className="float-left mr-3 mb-1 max-w-[90px] rounded" alt="" /></a>}
+          <b>{m.nome}:</b> {(m.mensagem || "").trim() ? `"${m.mensagem}"` : <i className="text-gray-500">(só foto)</i>}
+          <div className="clear-both" />
+        </div>
+      ))}
+    </div>
+  ) : <span className="text-gray-400">—</span>;
+
+  return (
+    <div className="mx-auto max-w-3xl px-3 py-6">
+      <div className="rounded-t-xl bg-green-700 p-4 text-center text-amber-50">
+        <h1 className="text-xl font-bold">⚽ Arraiá rumo ao Hexa 🏆</h1>
+        <div className="text-xs opacity-90">Painel de confirmações</div>
+      </div>
+      <div className="rounded-b-xl border border-t-0 bg-white p-5">
+        <div className="flex gap-2">
+          {[["Adultos", stats.totalAd, "text-green-700"], ["Crianças", stats.totalCr, "text-amber-600"], ["Total pessoas", stats.totalAd + stats.totalCr, "text-orange-700"]].map(([l, n, c]) => (
+            <div key={l as string} className="flex-1 rounded-lg bg-stone-50 p-3 text-center">
+              <div className={`text-3xl font-bold ${c}`}>{n as number}</div>
+              <div className="text-xs text-gray-500">{l as string}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 p-3 text-center text-sm text-slate-700">
+          👀 Visitas ao convite: <b className="text-green-700">{v?.unicos ?? "—"}</b> únicos · <b>{v?.total ?? "—"}</b> no total
+        </div>
+
+        <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3">
+          <div className="mb-2 text-sm">⏰ <b>Horário do jogo:</b> {data?.horario?.trim() ? data.horario : "a confirmar (mostrando SAVE THE DATE)"}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input value={hInput} onChange={(e) => setHInput(e.target.value)} placeholder="ex: 16h" className="min-w-[120px] flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-600" />
+            <button disabled={busy} onClick={() => salvarHorario(hInput)} className="rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Confirmar horário</button>
+            <button disabled={busy} onClick={() => { setHInput(""); salvarHorario(""); }} className="rounded-lg border border-orange-400 px-3 py-2 text-sm text-orange-700">Voltar p/ Save the Date</button>
+          </div>
+        </div>
+
+        <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+          <div className="mb-2 text-sm">🎤 <b>Último passo (grito + foto pro telão):</b> {data?.ultimo_passo ? "ativado" : "DESATIVADO"}</div>
+          <div className="flex gap-2">
+            <button disabled={busy} onClick={() => toggleUltimo(true)} className="rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Ativar</button>
+            <button disabled={busy} onClick={() => toggleUltimo(false)} className="rounded-lg border border-orange-400 px-3 py-2 text-sm text-orange-700">Desativar</button>
+          </div>
+        </div>
+
+        <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-green-700">🧑 Adultos confirmados ({stats.totalAd})</h2>
+        <div className="mt-1"><Grid items={[...stats.adultSet.map((e) => e.disp + (e.src.length > 1 ? ` (em ${e.src.length})` : "")), ...Array.from({ length: stats.unAd }, () => "(sem nome)")]} /></div>
+
+        <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-green-700">🧒 Crianças confirmadas ({stats.totalCr})</h2>
+        <div className="mt-1"><Grid items={[...stats.childSet.map((e) => e.disp), ...Array.from({ length: stats.unCr }, () => "(sem nome)")]} /></div>
+        {stats.ageStr && <div className="mt-1 text-xs text-gray-600"><b>Por idade:</b> {stats.ageStr}</div>}
+
+        <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-orange-700">❌ Não poderão ir ({stats.naoVai.length})</h2>
+        <div className="mt-1"><Grid items={stats.naoVai} /></div>
+
+        <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-green-700">💚 Recados de quem vai — telão ({stats.msgVai.length})</h2>
+        <div className="mt-1"><Msgs arr={stats.msgVai} /></div>
+
+        <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-orange-700">💬 Recados de quem não vai ({stats.msgNao.length})</h2>
+        <div className="mt-1"><Msgs arr={stats.msgNao} /></div>
+
+        <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-green-700">🗑️ Gerenciar respostas ({rows.length})</h2>
+        <div className="mt-2 space-y-1.5">
+          {[...rows].reverse().map((r) => (
+            <div key={r.id} className="flex items-center justify-between gap-2 rounded-lg border bg-stone-50 px-3 py-2 text-sm">
+              <div><b>{r.nome}</b><br /><span className="text-xs text-gray-500">{(r.presenca || "").indexOf("Sim") === 0 ? `✅ ${r.adultos || "(sem nomes)"}${r.criancas ? " · 👧 " + r.criancas : ""}` : "❌ não vai"}</span></div>
+              <button onClick={() => excluir(r.id, r.nome)} className="flex-none rounded-lg border border-orange-500 px-3 py-1.5 text-xs text-orange-700 hover:bg-orange-500 hover:text-white">excluir</button>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          <button onClick={megaCartaz} className="flex-1 rounded-lg bg-amber-500 py-3 text-sm font-bold text-amber-950">🖼️ Gerar prompt do Mega Cartaz</button>
+          <button onClick={recarregar} className="flex-1 rounded-lg border border-green-600 py-3 text-sm font-bold text-green-700">🔄 Atualizar agora</button>
+        </div>
+      </div>
+    </div>
+  );
+}
