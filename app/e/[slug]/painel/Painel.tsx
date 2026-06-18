@@ -10,7 +10,7 @@ type Row = {
   na: number | null; adultos: string | null; nc: number | null; criancas: string | null;
   mensagem: string | null; foto: string | null; prev: string | null;
 };
-type Dados = { ok?: boolean; error?: string; horario?: string; ultimo_passo?: boolean; visitas?: { total: number; unicos: number }; report_ativo?: boolean; report_horarios?: string; report_dias?: string; rows?: Row[] };
+type Dados = { ok?: boolean; error?: string; horario?: string; ultimo_passo?: boolean; visitas?: { total: number; unicos: number }; report_ativo?: boolean; report_horarios?: string; report_dias?: string; plano?: string; convite_imagem_url?: string | null; rows?: Row[] };
 type ConvRow = { id: string; token: string; nome: string; telefone: string | null; num_adultos: number; num_criancas: number; respondido: boolean; presenca: string | null };
 
 const norm = (s: string) => (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
@@ -83,6 +83,7 @@ export default function Painel({ slug }: { slug: string }) {
   const [agHorarios, setAgHorarios] = useState<string[]>([]);
   const [agDias, setAgDias] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [novaHora, setNovaHora] = useState("12:00");
+  const [imgBusy, setImgBusy] = useState(false);
 
   const rows = data?.rows || [];
   const stats = useMemo(() => computar(rows), [rows]);
@@ -127,6 +128,21 @@ export default function Painel({ slug }: { slug: string }) {
   function toggleDia(d: number) { setAgDias((p) => p.includes(d) ? p.filter((x) => x !== d) : [...p, d].sort((a, b) => a - b)); }
   function addHora() { const h = novaHora.trim(); if (/^\d{1,2}:\d{2}$/.test(h) && !agHorarios.includes(h)) setAgHorarios((p) => [...p, h].sort()); }
   function rmHora(h: string) { setAgHorarios((p) => p.filter((x) => x !== h)); }
+  async function uploadConvite(file: File | null) {
+    if (!file) return;
+    setImgBusy(true);
+    try {
+      const ext = ((file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "")) || "jpg";
+      const path = `convites/${slug}_${Date.now()}.${ext}`;
+      const up = await supabase.storage.from("fotos").upload(path, file, { upsert: true, contentType: file.type || "image/jpeg" });
+      if (!up.error) {
+        const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+        await supabase.rpc("painel_set_convite_imagem", { p_slug: slug, p_pwd: pwd, p_url: pub.publicUrl });
+        await recarregar();
+      }
+    } catch { /* ignora */ }
+    setImgBusy(false);
+  }
   async function salvarAgenda() {
     setBusy(true);
     await supabase.rpc("painel_set_agenda", { p_slug: slug, p_pwd: pwd, p_ativo: agAtivo, p_horarios: agHorarios.join(","), p_dias: agDias.join(",") });
@@ -222,6 +238,18 @@ export default function Painel({ slug }: { slug: string }) {
           👀 Visitas ao convite: <b className="text-green-700">{v?.unicos ?? "—"}</b> únicos · <b>{v?.total ?? "—"}</b> no total
         </div>
 
+        <div className="mt-2 text-center text-xs text-gray-500">Plano deste evento: <b className={data?.plano === "pro" ? "text-green-700" : "text-gray-700"}>{data?.plano === "pro" ? "Pro" : "Lite"}</b></div>
+
+        <div className="mt-3 rounded-lg border bg-stone-50 p-3">
+          <div className="text-sm font-medium">🖼️ Imagem do convite {data?.plano !== "pro" && <span className="text-xs font-normal text-gray-500">(usada no plano Lite)</span>}</div>
+          {data?.plano === "pro"
+            ? <p className="mt-1 text-xs text-gray-500">Seu plano é Pro: o convite usa o tema personalizado. (A imagem só é usada no plano Lite.)</p>
+            : <p className="mt-1 text-xs text-gray-500">No plano Lite, o convite é a imagem que você enviar aqui (faça a arte onde quiser e suba o JPG/PNG).</p>}
+          {data?.convite_imagem_url && <img src={data.convite_imagem_url} alt="convite" className="mt-2 max-h-40 rounded-lg border" />}
+          <input type="file" accept="image/*" disabled={imgBusy} onChange={(e) => uploadConvite(e.target.files && e.target.files[0] ? e.target.files[0] : null)} className="mt-2 block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-green-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white" />
+          {imgBusy && <p className="mt-1 text-xs text-gray-500">Enviando…</p>}
+        </div>
+
         <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3">
           <div className="mb-2 text-sm">⏰ <b>Horário do jogo:</b> {data?.horario?.trim() ? data.horario : "a confirmar (mostrando SAVE THE DATE)"}</div>
           <div className="flex flex-wrap items-center gap-2">
@@ -291,6 +319,13 @@ export default function Painel({ slug }: { slug: string }) {
             </div>
           ))}
           {!convs.length && <p className="text-sm text-gray-400">Nenhum convidado cadastrado ainda.</p>}
+        </div>
+
+        <div className="mt-3 rounded-lg border border-dashed border-gray-300 bg-white p-3">
+          <div className="text-sm font-medium">🤖 Disparo automático no WhatsApp {data?.plano !== "pro" && <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-700">🔒 Pro</span>}</div>
+          {data?.plano === "pro"
+            ? <p className="mt-1 text-xs text-gray-500">Disponível no seu plano. Integração com a WhatsApp Cloud API — configuração em breve.</p>
+            : <p className="mt-1 text-xs text-gray-500">Envie os convites automaticamente para toda a lista. Disponível no plano <b>Pro</b>. No Lite, use o botão <b>WhatsApp</b> de cada convidado (1 toque).</p>}
         </div>
 
         <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-green-700">🧑 Adultos confirmados ({stats.totalAd})</h2>

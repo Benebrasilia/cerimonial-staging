@@ -8,6 +8,8 @@ export type EventoPublico = {
   local: string | null;
   ultimo_passo: boolean;
   config: Record<string, unknown> | null;
+  plano?: string;
+  convite_imagem_url?: string | null;
 };
 
 export async function getEventoPublico(slug: string): Promise<EventoPublico | null> {

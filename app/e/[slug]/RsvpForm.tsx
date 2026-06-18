@@ -95,7 +95,7 @@ const ARR_CSS = `
 
 export default function RsvpForm({ evento, convidado }: { evento: EventoPublico; convidado?: Convidado | null }) {
   const cfg = (evento.config || {}) as Record<string, unknown>;
-  const arraia = cfg.tema === "arraia";
+  const arraia = cfg.tema === "arraia" && evento.plano === "pro";
   const travado = !!convidado?.travado;
   const titulo = (Array.isArray(cfg.titulo) ? cfg.titulo : []) as string[];
   const subtitulo = (cfg.subtitulo as string) || "";
@@ -338,6 +338,7 @@ export default function RsvpForm({ evento, convidado }: { evento: EventoPublico;
   return (
     <Tela>
       <div className="mb-5 text-center">
+        {evento.convite_imagem_url && <img src={evento.convite_imagem_url} alt="convite" className="mb-4 w-full rounded-xl" />}
         <h1 className="text-2xl font-bold text-green-700">{evento.nome}</h1>
         <div className="mt-2 inline-block rounded-lg bg-green-700 px-4 py-1.5 text-sm font-bold text-amber-200">{dataFmt || "Data a confirmar"}</div>
         {evento.horario && <div className="mt-1 text-sm italic text-gray-600">{evento.horario}</div>}
