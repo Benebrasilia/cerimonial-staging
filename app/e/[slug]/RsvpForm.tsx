@@ -8,6 +8,7 @@ const supabase = createClient();
 const words = (s: string) => (s || "").trim().split(/\s+/).filter(Boolean);
 
 type Crianca = { nome: string; idade: string };
+type Anuncio = { id: string; tipo: string; titulo: string | null; midia_url: string | null; link: string | null };
 
 // ---- Arte do tema "arraiá" (idêntica à produção) ----
 const STAR = "M12 2 L15.09 8.26 L22 9.27 L17 14.14 L18.18 21.02 L12 17.77 L5.82 21.02 L7 14.14 L2 9.27 L8.91 8.26 Z";
@@ -113,6 +114,14 @@ export default function RsvpForm({ evento, convidado }: { evento: EventoPublico;
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
+  const [ads, setAds] = useState<Anuncio[]>([]);
+
+  // anúncios (somente no plano Lite)
+  useEffect(() => {
+    if (evento.plano === "pro") return;
+    supabase.from("anuncios").select("id,tipo,titulo,midia_url,link").eq("ativo", true).in("posicao", ["convite", "ambos"]).order("ordem")
+      .then(({ data }) => { if (data) setAds(data as Anuncio[]); }, () => {});
+  }, []);
 
   // contador de visitas (fire-and-forget)
   useEffect(() => {
@@ -332,6 +341,7 @@ export default function RsvpForm({ evento, convidado }: { evento: EventoPublico;
           <div className="mt-1 text-lg text-gray-500">{vai ? "presença confirmada" : "resposta registrada"}</div>
           {vai ? (<><p className="mt-4 text-gray-700">A gente se vê{dataFmt ? ` dia ${dataFmt}` : ""}! 🎉</p>{evento.local && <p className="mt-2 font-semibold text-green-700">📍 {evento.local}</p>}</>) : (<p className="mt-4 text-gray-700">Que pena! Fica para uma próxima. Obrigado por avisar 💚</p>)}
         </div>
+        <Anuncios items={ads} />
       </Tela>
     );
   }
@@ -398,8 +408,29 @@ export default function RsvpForm({ evento, convidado }: { evento: EventoPublico;
           </div>
         )}
       </div>
+      <Anuncios items={ads} />
     </Tela>
   );
+}
+
+function Anuncios({ items }: { items: Anuncio[] }) {
+  if (!items.length) return null;
+  return (
+    <div className="mt-4 space-y-2">
+      {items.map((a) => <AnuncioView key={a.id} a={a} />)}
+      <div className="text-center text-[10px] uppercase tracking-wide text-gray-400">publicidade</div>
+    </div>
+  );
+}
+function AnuncioView({ a }: { a: Anuncio }) {
+  if (a.tipo === "video" && a.midia_url) {
+    const yt = a.midia_url.match(/(?:youtu\.be\/|v=)([\w-]{11})/);
+    if (yt) return <div className="overflow-hidden rounded-xl"><iframe className="aspect-video w-full" src={`https://www.youtube.com/embed/${yt[1]}`} title={a.titulo || "anúncio"} allow="encrypted-media" /></div>;
+    return <video src={a.midia_url} controls className="w-full rounded-xl" />;
+  }
+  if (a.tipo === "adsense") return null;
+  const img = <img src={a.midia_url || ""} alt={a.titulo || "anúncio"} className="w-full rounded-xl" />;
+  return a.link ? <a href={a.link} target="_blank" rel="noreferrer">{img}</a> : img;
 }
 
 function Tela({ children }: { children: React.ReactNode }) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase";
 
 const supabase = createClient();
@@ -12,6 +12,7 @@ type Row = {
 };
 type Dados = { ok?: boolean; error?: string; horario?: string; ultimo_passo?: boolean; visitas?: { total: number; unicos: number }; report_ativo?: boolean; report_horarios?: string; report_dias?: string; plano?: string; convite_imagem_url?: string | null; rows?: Row[] };
 type ConvRow = { id: string; token: string; nome: string; telefone: string | null; num_adultos: number; num_criancas: number; respondido: boolean; presenca: string | null };
+type AnuncioP = { id: string; tipo: string; titulo: string | null; midia_url: string | null; link: string | null };
 
 const norm = (s: string) => (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
 const toks = (s: string) => norm(s).split(" ").filter(Boolean);
@@ -84,6 +85,11 @@ export default function Painel({ slug }: { slug: string }) {
   const [agDias, setAgDias] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [novaHora, setNovaHora] = useState("12:00");
   const [imgBusy, setImgBusy] = useState(false);
+  const [adsP, setAdsP] = useState<AnuncioP[]>([]);
+  useEffect(() => {
+    supabase.from("anuncios").select("id,tipo,titulo,midia_url,link").eq("ativo", true).in("posicao", ["painel", "ambos"]).order("ordem")
+      .then(({ data }) => { if (data) setAdsP(data as AnuncioP[]); }, () => {});
+  }, []);
 
   const rows = data?.rows || [];
   const stats = useMemo(() => computar(rows), [rows]);
@@ -353,6 +359,20 @@ export default function Painel({ slug }: { slug: string }) {
             </div>
           ))}
         </div>
+
+        {data?.plano !== "pro" && adsP.length > 0 && (
+          <div className="mt-5">
+            <h2 className="border-b-2 border-stone-100 pb-1 text-green-700">🤝 Parceiros</h2>
+            <div className="mt-2 space-y-2">
+              {adsP.map((a) => (
+                a.link
+                  ? <a key={a.id} href={a.link} target="_blank" rel="noreferrer" className="block"><img src={a.midia_url || ""} alt={a.titulo || "parceiro"} className="w-full rounded-lg" /></a>
+                  : <img key={a.id} src={a.midia_url || ""} alt={a.titulo || "parceiro"} className="w-full rounded-lg" />
+              ))}
+              <div className="text-center text-[10px] uppercase tracking-wide text-gray-400">publicidade</div>
+            </div>
+          </div>
+        )}
 
         <div className="mt-5 flex flex-wrap gap-2">
           <button onClick={enviarEmail} disabled={enviandoEmail} className="flex-1 rounded-lg bg-green-700 py-3 text-sm font-bold text-white disabled:opacity-50">{enviandoEmail ? "Enviando…" : "📧 Enviar relatório"}</button>
