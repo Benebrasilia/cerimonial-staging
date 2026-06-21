@@ -120,6 +120,12 @@ export default function Conta() {
             <li>Inclui anúncios de parceiros</li>
           </ul>
           <p className="mt-3 text-sm font-semibold text-gray-500">R$ 0 — para sempre</p>
+          <a
+            href="/admin"
+            className="mt-3 inline-block rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+          >
+            Começar grátis — criar meu evento
+          </a>
         </div>
         {/* Pro */}
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
@@ -176,7 +182,7 @@ export default function Conta() {
               </button>
             )}
           </div>
-        )) : <p className="text-sm text-gray-400">Você ainda não tem eventos.</p>}
+        )) : <p className="text-sm text-gray-400">Você ainda não tem eventos. <a href="/admin" className="font-semibold text-green-700 hover:underline">Criar meu primeiro evento</a>.</p>}
       </div>
     </div>
   );
