@@ -17,9 +17,10 @@ export default function Conta() {
   const pagamentoOk = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("pagamento") === "ok";
 
   useEffect(() => {
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { window.location.href = "/login"; return; }
+    let carregado = false;
+    async function carregar(session: { user: { id: string; email?: string | null } }) {
+      if (carregado) return;
+      carregado = true;
       setEmail(session.user.email ?? null);
       setUserId(session.user.id);
       const { data } = await supabase.from("eventos").select("id,nome,slug,plano").order("created_at", { ascending: false });
@@ -27,7 +28,21 @@ export default function Conta() {
       const { data: pl } = await supabase.from("planos").select("codigo,nome,valor,periodicidade").eq("ativo", true);
       setPlanos((pl as Plano[]) || []);
       setLoading(false);
+    }
+    // Quando o login (incl. Google/PKCE) conclui, o code vira sessao -> evento SIGNED_IN.
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => { if (session) carregar(session); });
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) { carregar(session); return; }
+      const temCode = new URLSearchParams(window.location.search).has("code");
+      if (!temCode) { window.location.href = "/login"; return; }
+      // Tem ?code= na URL: aguarda a troca por sessao; redireciona so se falhar.
+      setTimeout(async () => {
+        const { data: { session: s2 } } = await supabase.auth.getSession();
+        if (!s2 && !carregado) window.location.href = "/login";
+      }, 4000);
     })();
+    return () => sub.subscription.unsubscribe();
   }, []);
 
   async function sair() { await supabase.auth.signOut(); window.location.href = "/login"; }
