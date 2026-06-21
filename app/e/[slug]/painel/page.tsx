@@ -2,7 +2,7 @@ import Painel from "./Painel";
 
 type Params = { params: Promise<{ slug: string }> };
 
-export const metadata = { title: "Painel dos organizadores — Cerimonial" };
+export const metadata = { title: "Painel dos organizadores — Confirmae" };
 
 export default async function Page({ params }: Params) {
   const { slug } = await params;

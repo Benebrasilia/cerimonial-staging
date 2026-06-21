@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Cerimonial — Gestor de Eventos",
+  title: "Confirmae — Gestor de Eventos",
   description: "Plataforma para cerimonialistas gerenciarem eventos e confirmações.",
 };
 

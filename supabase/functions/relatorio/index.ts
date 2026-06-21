@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: { Authorization: `Bearer ${RESEND}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: ev.report_from || "Cerimonial <onboarding@resend.dev>",
+        from: ev.report_from || "Confirmae <onboarding@resend.dev>",
         to: ev.report_emails.split(",").map((x: string) => x.trim()).filter(Boolean),
         subject: `${ev.nome} - ${s.totalAd} adultos e ${s.totalCr} criancas confirmados`,
         html,

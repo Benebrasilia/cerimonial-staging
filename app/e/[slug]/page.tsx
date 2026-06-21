@@ -11,7 +11,7 @@ type Params = {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const ev = await getEventoPublico(slug);
-  if (!ev) return { title: "Evento não encontrado — Cerimonial" };
+  if (!ev) return { title: "Evento não encontrado — Confirmae" };
   const partes = [ev.local, formatarData(ev.data)].filter(Boolean).join(" · ");
   const titulo = `${ev.nome} — Confirme sua presença`;
   const desc = `Você é meu convidado! Toque para confirmar sua presença.${partes ? " 📍 " + partes : ""}`;

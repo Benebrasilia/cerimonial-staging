@@ -95,7 +95,7 @@ function Auth() {
   return (
     <div className="grid min-h-screen place-items-center px-4">
       <form onSubmit={submit} className="w-full max-w-sm rounded-2xl bg-white p-7 shadow-sm">
-        <h1 className="text-center text-2xl font-bold text-green-700">Cerimonial</h1>
+        <h1 className="text-center text-2xl font-bold text-green-700">Confirma<span className="text-amber-500">e</span></h1>
         <p className="mb-5 text-center text-sm text-gray-500">Gestor de eventos</p>
         <label className="mb-1 block text-sm font-medium">E-mail</label>
         <input
@@ -181,7 +181,7 @@ function Painel({ email }: { email: string }) {
     <div className="min-h-screen">
       <header className="flex items-center justify-between bg-green-700 px-5 py-3 text-white">
         <div className="font-bold">
-          ✦ Cerimonial <span className="text-sm font-normal opacity-80">· gestor de eventos</span>
+          ✦ Confirmae <span className="text-sm font-normal opacity-80">· gestor de eventos</span>
         </div>
         <div className="flex items-center gap-3 text-sm">
           <span className="opacity-90">{email}</span>

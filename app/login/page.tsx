@@ -13,7 +13,7 @@ export default function Login() {
   return (
     <div className="grid min-h-screen place-items-center px-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-7 text-center shadow-sm">
-        <h1 className="text-2xl font-bold text-green-700">Cerimonial</h1>
+        <h1 className="text-2xl font-bold text-green-700">Confirma<span className="text-amber-500">e</span></h1>
         <p className="mt-1 text-sm text-gray-500">Entre para gerenciar seus eventos</p>
         <button onClick={googleLogin}
           className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white py-2.5 font-semibold text-gray-700 hover:bg-gray-50">
