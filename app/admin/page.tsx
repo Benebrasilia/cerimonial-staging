@@ -221,11 +221,14 @@ function Painel({ email }: { email: string }) {
                     <div className="text-sm text-gray-500">
                       📅 {dataFmt}{ev.horario ? ` · ${ev.horario}` : ""}{ev.local ? ` · ${ev.local}` : ""}
                     </div>
-                    <div className="truncate text-sm text-gray-400">
-                      🔗 {link} <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">em breve</span>
+                    <div className="truncate text-sm">
+                      <a href={link} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">🔗 {link}</a>
                     </div>
                   </div>
                   <div className="ml-3 flex shrink-0 gap-2">
+                    <a href={`/e/${ev.slug}/painel`} className="rounded-md bg-green-700 px-3 py-1 text-sm font-semibold text-white hover:bg-green-800">
+                      Convidados
+                    </a>
                     <button onClick={() => setEditando(ev)} className="rounded-md border border-green-600 px-3 py-1 text-sm font-medium text-green-700 hover:bg-green-50">
                       Editar
                     </button>

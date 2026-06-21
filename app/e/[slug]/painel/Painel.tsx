@@ -86,9 +86,24 @@ export default function Painel({ slug }: { slug: string }) {
   const [novaHora, setNovaHora] = useState("12:00");
   const [imgBusy, setImgBusy] = useState(false);
   const [adsP, setAdsP] = useState<AnuncioP[]>([]);
+  const [tentouDono, setTentouDono] = useState(false);
   useEffect(() => {
     supabase.from("anuncios").select("id,tipo,titulo,midia_url,link").eq("ativo", true).in("posicao", ["painel", "ambos"]).order("ordem")
       .then(({ data }) => { if (data) setAdsP(data as AnuncioP[]); }, () => {});
+  }, []);
+
+  // Dono autenticado entra direto no proprio evento (sem senha). Senha continua p/ co-organizadores.
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const ok = await carregar("");
+        if (ok) { setAuthed(true); await loadConvidados(""); }
+        else setErro("");
+      }
+      setTentouDono(true);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const rows = data?.rows || [];
@@ -191,6 +206,9 @@ export default function Painel({ slug }: { slug: string }) {
   }
 
   if (!authed) {
+    if (!tentouDono) {
+      return <div className="grid min-h-screen place-items-center text-gray-500">Carregando…</div>;
+    }
     return (
       <div className="grid min-h-screen place-items-center bg-stone-100 px-4">
         <div className="w-full max-w-sm rounded-2xl bg-white p-7 text-center shadow-sm">
