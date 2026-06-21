@@ -153,6 +153,7 @@ function Auth() {
 
 function Painel({ email }: { email: string }) {
   const [eventos, setEventos] = useState<Evento[]>([]);
+  const [ehAdmin, setEhAdmin] = useState(false);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [editando, setEditando] = useState<Evento | null | undefined>(undefined); // undefined=fechado, null=novo
@@ -169,6 +170,7 @@ function Painel({ email }: { email: string }) {
   }, []);
 
   useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => { supabase.rpc("is_admin").then(({ data }) => setEhAdmin(data === true), () => {}); }, []);
 
   async function excluir(ev: Evento) {
     if (!confirm(`Excluir o evento "${ev.nome}"?\nIsso apaga também as confirmações dele. Esta ação não pode ser desfeita.`)) return;
@@ -185,6 +187,11 @@ function Painel({ email }: { email: string }) {
         </div>
         <div className="flex items-center gap-3 text-sm">
           <span className="opacity-90">{email}</span>
+          {ehAdmin && (
+            <a href="/sistema" className="rounded-md border border-white/40 px-3 py-1 hover:bg-white/10">
+              Sistema
+            </a>
+          )}
           <a href="/conta?ver=1" className="rounded-md border border-white/40 px-3 py-1 hover:bg-white/10">
             Planos
           </a>
