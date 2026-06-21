@@ -185,6 +185,9 @@ function Painel({ email }: { email: string }) {
         </div>
         <div className="flex items-center gap-3 text-sm">
           <span className="opacity-90">{email}</span>
+          <a href="/conta?ver=1" className="rounded-md border border-white/40 px-3 py-1 hover:bg-white/10">
+            Planos
+          </a>
           <button onClick={() => supabase.auth.signOut()} className="rounded-md border border-white/40 px-3 py-1 hover:bg-white/10">
             Sair
           </button>

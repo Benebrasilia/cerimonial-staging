@@ -24,7 +24,14 @@ export default function Conta() {
       setEmail(session.user.email ?? null);
       setUserId(session.user.id);
       const { data } = await supabase.from("eventos").select("id,nome,slug,plano").order("created_at", { ascending: false });
-      setEventos((data as Ev[]) || []);
+      const evs = (data as Ev[]) || [];
+      // Conta Pro = assinatura ativa OU algum evento Pro. Pro vai direto pro ambiente de gestao;
+      // Lite fica nesta tela de planos. (?ver=1 permite o Pro abrir os planos de proposito.)
+      const { data: assn } = await supabase.from("assinaturas").select("status").in("status", ["authorized", "active"]).limit(1);
+      const proAccount = (assn && assn.length > 0) || evs.some((e) => e.plano === "pro");
+      const verPlanos = new URLSearchParams(window.location.search).has("ver");
+      if (proAccount && !verPlanos) { window.location.replace("/admin"); return; }
+      setEventos(evs);
       const { data: pl } = await supabase.from("planos").select("codigo,nome,valor,periodicidade").eq("ativo", true);
       setPlanos((pl as Plano[]) || []);
       setLoading(false);
