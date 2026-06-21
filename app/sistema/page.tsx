@@ -52,9 +52,11 @@ export default function Sistema() {
 
   useEffect(() => { carregar(); /* eslint-disable-next-line */ }, []);
 
+  const [confirmar, setConfirmar] = useState<string | null>(null);
   async function togglePlano(ev: EvAdmin) {
+    if (confirmar !== ev.id) { setConfirmar(ev.id); return; }
+    setConfirmar(null);
     const novo = ev.plano === "pro" ? "lite" : "pro";
-    if (!confirm(`Mudar "${ev.nome}" para ${novo.toUpperCase()}?`)) return;
     setBusy(ev.id);
     await supabase.rpc("admin_set_plano", { p_evento_id: ev.id, p_plano: novo });
     await carregar();
@@ -126,7 +128,7 @@ export default function Sistema() {
                       disabled={busy === e.id}
                       className={`rounded-md px-3 py-1 text-xs font-semibold disabled:opacity-50 ${e.plano === "pro" ? "border border-gray-300 text-gray-600 hover:bg-gray-50" : "bg-amber-500 text-white hover:bg-amber-600"}`}
                     >
-                      {busy === e.id ? "…" : e.plano === "pro" ? "Tornar Lite" : "Habilitar Pro"}
+                      {busy === e.id ? "…" : confirmar === e.id ? "Confirmar?" : e.plano === "pro" ? "Tornar Lite" : "Habilitar Pro"}
                     </button>
                   </td>
                 </tr>
