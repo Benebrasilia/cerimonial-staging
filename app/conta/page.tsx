@@ -104,32 +104,53 @@ export default function Conta() {
         </div>
       )}
 
-      {/* Plano Pro */}
-      <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
-        <div className="flex items-center gap-2">
-          <h2 className="font-bold text-amber-700">Plano Pro</h2>
-          {temPro && <span className="rounded-full bg-green-600 px-2 py-0.5 text-xs font-semibold text-white">Ativo</span>}
+      {/* Planos */}
+      <h2 className="mt-6 text-lg font-bold text-green-700">Planos</h2>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        {/* Lite (grátis) */}
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-bold text-gray-700">Lite</h3>
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">Grátis</span>
+            {!temPro && <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">Plano atual</span>}
+          </div>
+          <ul className="mt-2 space-y-1 text-sm text-gray-600">
+            <li>Uma imagem pronta como convite</li>
+            <li>Confirmação de presença (RSVP) e relatórios por e-mail</li>
+            <li>Inclui anúncios de parceiros</li>
+          </ul>
+          <p className="mt-3 text-sm font-semibold text-gray-500">R$ 0 — para sempre</p>
         </div>
-        <p className="mt-1 text-sm text-gray-600">
-          Convite personalizado por convidado, múltiplos eventos, disparo automático no WhatsApp e sem anúncios.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            onClick={() => assinar("pro_mensal")}
-            disabled={!!pagando}
-            className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
-          >
-            {pagando === "pro_mensal" ? "Abrindo…" : `Assinar mensal${mensal ? " — " + brl(mensal.valor) + "/mês" : ""}`}
-          </button>
-          <button
-            onClick={() => assinar("pro_anual")}
-            disabled={!!pagando}
-            className="rounded-lg border border-amber-500 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-60"
-          >
-            {pagando === "pro_anual" ? "Abrindo…" : `Assinar anual${anual ? " — " + brl(anual.valor) + "/ano" : ""}`}
-          </button>
+        {/* Pro */}
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-bold text-amber-700">Pro</h3>
+            {temPro && <span className="rounded-full bg-green-600 px-2 py-0.5 text-xs font-semibold text-white">Ativo</span>}
+          </div>
+          <ul className="mt-2 space-y-1 text-sm text-gray-600">
+            <li>Convite personalizado por convidado</li>
+            <li>Múltiplos eventos</li>
+            <li>Disparo automático no WhatsApp</li>
+            <li>Sem anúncios</li>
+          </ul>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              onClick={() => assinar("pro_mensal")}
+              disabled={!!pagando}
+              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
+            >
+              {pagando === "pro_mensal" ? "Abrindo…" : `Mensal${mensal ? " — " + brl(mensal.valor) : ""}`}
+            </button>
+            <button
+              onClick={() => assinar("pro_anual")}
+              disabled={!!pagando}
+              className="rounded-lg border border-amber-500 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+            >
+              {pagando === "pro_anual" ? "Abrindo…" : `Anual${anual ? " — " + brl(anual.valor) : ""}`}
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-gray-400">Pagamento seguro via Mercado Pago. Cancele quando quiser.</p>
         </div>
-        <p className="mt-2 text-xs text-gray-400">Pagamento seguro via Mercado Pago. Cancele quando quiser.</p>
       </div>
 
       <h2 className="mt-8 text-lg font-bold text-green-700">Meus eventos</h2>
