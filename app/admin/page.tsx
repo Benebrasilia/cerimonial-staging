@@ -13,6 +13,7 @@ type Evento = {
   data: string | null;
   horario: string | null;
   local: string | null;
+  anfitriao_email?: string | null;
 };
 
 function slugify(s: string) {
@@ -231,6 +232,7 @@ function Painel({ email }: { email: string }) {
                     <div className="truncate text-sm">
                       <a href={link} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">🔗 {link}</a>
                     </div>
+                    {ev.anfitriao_email && <div className="mt-0.5 text-xs text-gray-500">👤 anfitrião: {ev.anfitriao_email}</div>}
                   </div>
                   <div className="ml-3 flex shrink-0 gap-2">
                     <a href={`/e/${ev.slug}/painel`} className="rounded-md bg-green-700 px-3 py-1 text-sm font-semibold text-white hover:bg-green-800">
@@ -264,6 +266,7 @@ function ModalEvento({ ev, onClose, onSaved }: { ev: Evento | null; onClose: () 
   const [data, setData] = useState(ev?.data ?? "");
   const [horario, setHorario] = useState(ev?.horario ?? "");
   const [local, setLocal] = useState(ev?.local ?? "");
+  const [anfitriao, setAnfitriao] = useState(ev?.anfitriao_email ?? "");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -271,7 +274,7 @@ function ModalEvento({ ev, onClose, onSaved }: { ev: Evento | null; onClose: () 
     e.preventDefault();
     if (!nome.trim()) return setMsg("Dê um nome ao evento.");
     setBusy(true);
-    const payload = { nome: nome.trim(), data: data || null, horario: horario.trim(), local: local.trim() || null };
+    const payload = { nome: nome.trim(), data: data || null, horario: horario.trim(), local: local.trim() || null, anfitriao_email: anfitriao.trim().toLowerCase() || null };
     let error;
     if (ev) {
       ({ error } = await supabase.from("eventos").update(payload).eq("id", ev.id));
@@ -300,7 +303,10 @@ function ModalEvento({ ev, onClose, onSaved }: { ev: Evento | null; onClose: () 
           </div>
         </div>
         <label className="mb-1 block text-sm font-medium">Local</label>
-        <input value={local ?? ""} onChange={(e) => setLocal(e.target.value)} placeholder="Endereço do evento" className="mb-4 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-600" />
+        <input value={local ?? ""} onChange={(e) => setLocal(e.target.value)} placeholder="Endereço do evento" className="mb-3 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-600" />
+        <label className="mb-1 block text-sm font-medium">E-mail do anfitrião (opcional)</label>
+        <input type="email" value={anfitriao ?? ""} onChange={(e) => setAnfitriao(e.target.value)} placeholder="anfitriao@email.com — ele gerencia os convidados" className="mb-1 w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-green-600" />
+        <p className="mb-4 text-xs text-gray-400">Atribua o evento a um anfitrião: ao entrar com esse e-mail, ele vê o evento e gerencia os convidados.</p>
         {msg && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{msg}</p>}
         <div className="flex gap-3">
           <button type="button" onClick={onClose} className="flex-1 rounded-lg border border-green-600 py-2.5 font-semibold text-green-700 hover:bg-green-50">Cancelar</button>
