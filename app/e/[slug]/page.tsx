@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { notFound } from "next/navigation";
 import { getEventoPublico, getConvidado, formatarData } from "@/lib/eventoPublico";
 import RsvpForm from "./RsvpForm";
@@ -29,5 +30,18 @@ export default async function Page({ params, searchParams }: Params) {
   const ev = await getEventoPublico(slug);
   if (!ev) notFound();
   const convidado = token ? await getConvidado(token) : null;
-  return <RsvpForm evento={ev} convidado={convidado} />;
+  const lite = ev.plano !== "pro";
+  return (
+    <>
+      {lite && (
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7007542679232678"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
+      )}
+      <RsvpForm evento={ev} convidado={convidado} />
+    </>
+  );
 }
