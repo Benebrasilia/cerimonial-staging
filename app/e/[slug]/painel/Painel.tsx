@@ -90,6 +90,7 @@ export default function Painel({ slug }: { slug: string }) {
   const [imgBusy, setImgBusy] = useState(false);
   const [adsP, setAdsP] = useState<AnuncioP[]>([]);
   const [tentouDono, setTentouDono] = useState(false);
+  const [view, setView] = useState<string>("home");
   useEffect(() => {
     supabase.from("anuncios").select("id,tipo,titulo,midia_url,link").eq("ativo", true).in("posicao", ["painel", "ambos"]).order("ordem")
       .then(({ data }) => { if (data) setAdsP(data as AnuncioP[]); }, () => {});
@@ -252,174 +253,201 @@ export default function Painel({ slug }: { slug: string }) {
       <a href="/admin" className="mb-3 inline-block text-sm font-semibold text-green-700 hover:underline">← Voltar aos eventos</a>
       <div className="rounded-t-xl bg-green-700 p-4 text-center text-amber-50">
         <h1 className="text-xl font-bold">⚽ Arraiá rumo ao Hexa 🏆</h1>
-        <div className="text-xs opacity-90">Painel de confirmações</div>
+        <div className="text-xs opacity-90">Painel do evento</div>
       </div>
       <div className="rounded-b-xl border border-t-0 bg-white p-5">
-        <div className="flex gap-2">
-          {[["Adultos", stats.totalAd, "text-green-700"], ["Crianças", stats.totalCr, "text-amber-600"], ["Total pessoas", stats.totalAd + stats.totalCr, "text-orange-700"]].map(([l, n, c]) => (
-            <div key={l as string} className="flex-1 rounded-lg bg-stone-50 p-3 text-center">
-              <div className={`text-3xl font-bold ${c}`}>{n as number}</div>
-              <div className="text-xs text-gray-500">{l as string}</div>
-            </div>
-          ))}
-        </div>
+        {view !== "home" && (
+          <button onClick={() => setView("home")} className="mb-4 inline-flex items-center gap-1 rounded-lg border border-green-600 px-3 py-1.5 text-sm font-semibold text-green-700 hover:bg-green-50">← Voltar ao painel</button>
+        )}
 
-        <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 p-3 text-center text-sm text-slate-700">
-          👀 Visitas ao convite: <b className="text-green-700">{v?.unicos ?? "—"}</b> únicos · <b>{v?.total ?? "—"}</b> no total
-        </div>
-
-        <div className="mt-2 text-center text-xs text-gray-500">Plano deste evento: <b className={data?.plano === "pro" ? "text-green-700" : "text-gray-700"}>{data?.plano === "pro" ? "Pro" : "Lite"}</b></div>
-
-        <div className="mt-3 rounded-lg border bg-stone-50 p-3">
-          <div className="text-sm font-medium">🖼️ Imagem do convite {data?.plano !== "pro" && <span className="text-xs font-normal text-gray-500">(usada no plano Lite)</span>}</div>
-          {data?.plano === "pro"
-            ? <p className="mt-1 text-xs text-gray-500">Seu plano é Pro: o convite usa o tema personalizado. (A imagem só é usada no plano Lite.)</p>
-            : <p className="mt-1 text-xs text-gray-500">No plano Lite, o convite é a imagem que você enviar aqui (faça a arte onde quiser e suba o JPG/PNG).</p>}
-          {data?.convite_imagem_url && <img src={data.convite_imagem_url} alt="convite" className="mt-2 max-h-40 rounded-lg border" />}
-          <input type="file" accept="image/*" disabled={imgBusy} onChange={(e) => uploadConvite(e.target.files && e.target.files[0] ? e.target.files[0] : null)} className="mt-2 block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-green-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white" />
-          {imgBusy && <p className="mt-1 text-xs text-gray-500">Enviando…</p>}
-        </div>
-
-        <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3">
-          <div className="mb-2 text-sm">⏰ <b>Horário do jogo:</b> {data?.horario?.trim() ? data.horario : "a confirmar (mostrando SAVE THE DATE)"}</div>
-          <div className="flex flex-wrap items-center gap-2">
-            <input value={hInput} onChange={(e) => setHInput(e.target.value)} placeholder="ex: 16h" className="min-w-[120px] flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-600" />
-            <button disabled={busy} onClick={() => salvarHorario(hInput)} className="rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Confirmar horário</button>
-            <button disabled={busy} onClick={() => { setHInput(""); salvarHorario(""); }} className="rounded-lg border border-orange-400 px-3 py-2 text-sm text-orange-700">Voltar p/ Save the Date</button>
-          </div>
-        </div>
-
-        <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
-          <div className="mb-2 text-sm">🎤 <b>Último passo (grito + foto pro telão):</b> {data?.ultimo_passo ? "ativado" : "DESATIVADO"}</div>
-          <div className="flex gap-2">
-            <button disabled={busy} onClick={() => toggleUltimo(true)} className="rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Ativar</button>
-            <button disabled={busy} onClick={() => toggleUltimo(false)} className="rounded-lg border border-orange-400 px-3 py-2 text-sm text-orange-700">Desativar</button>
-          </div>
-        </div>
-
-        <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 p-3">
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input type="checkbox" checked={agAtivo} onChange={(e) => setAgAtivo(e.target.checked)} />
-            📅 Enviar relatório automático por e-mail
-          </label>
-          <div className={agAtivo ? "mt-2" : "mt-2 pointer-events-none opacity-50"}>
-            <div className="text-xs text-gray-600">Dias da semana:</div>
-            <div className="mt-1 flex flex-wrap gap-1">
-              {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((lbl, i) => (
-                <button key={i} type="button" onClick={() => toggleDia(i)} className={`rounded-lg px-2.5 py-1 text-xs ${agDias.includes(i) ? "bg-green-700 text-white" : "border border-gray-300 bg-white text-gray-600"}`}>{lbl}</button>
-              ))}
-            </div>
-            <div className="mt-2 text-xs text-gray-600">Horários:</div>
-            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              {agHorarios.map((h) => (
-                <span key={h} className="inline-flex items-center gap-1 rounded-lg border bg-white px-2 py-1 text-xs">{h}<button type="button" onClick={() => rmHora(h)} className="text-orange-600">✕</button></span>
-              ))}
-              <input type="time" value={novaHora} onChange={(e) => setNovaHora(e.target.value)} className="rounded border border-gray-300 px-2 py-1 text-xs" />
-              <button type="button" onClick={addHora} className="rounded-lg border border-gray-300 px-2 py-1 text-xs">+ adicionar</button>
-            </div>
-          </div>
-          <button disabled={busy} onClick={salvarAgenda} className="mt-3 rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Salvar agenda</button>
-          <p className="mt-2 text-xs text-gray-500">Fuso de Brasília. Começa a enviar quando o domínio do remetente estiver verificado.</p>
-        </div>
-
-        <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-green-700">📨 Convidados ({convs.length})</h2>
-        <label className="mt-1 flex items-center gap-2 text-sm text-gray-600">
-          <input type="checkbox" checked={travados} onChange={(e) => toggleTravado(e.target.checked)} />
-          Travar as quantidades (o convidado não altera adultos/crianças)
-        </label>
-        <div className="mt-2 flex flex-wrap items-end gap-2 rounded-lg border bg-stone-50 p-3">
-          <div className="min-w-[140px] flex-1"><label className="text-xs text-gray-500">Nome</label><input value={cNome} onChange={(e) => setCNome(e.target.value)} placeholder="Nome do convidado" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
-          <div className="min-w-[130px]"><label className="text-xs text-gray-500">WhatsApp (DDD)</label><input value={cTel} onChange={(e) => setCTel(e.target.value)} placeholder="61 99999-9999" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
-          <div><label className="block text-xs text-gray-500">Adultos</label><select value={cNa} onChange={(e) => setCNa(parseInt(e.target.value, 10))} className="rounded border border-gray-300 px-2 py-1.5 text-sm">{[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}</select></div>
-          <div><label className="block text-xs text-gray-500">Crianças</label><select value={cNc} onChange={(e) => setCNc(parseInt(e.target.value, 10))} className="rounded border border-gray-300 px-2 py-1.5 text-sm">{[0, 1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}</select></div>
-          <button onClick={addConvidado} className="rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white">Adicionar</button>
-        </div>
-        <div className="mt-2 space-y-1.5">
-          {convs.map((c) => (
-            <div key={c.id} className="rounded-lg border bg-white px-3 py-2 text-sm">
-              {editId === c.id ? (
-                <div className="flex flex-wrap items-end gap-2">
-                  <div className="min-w-[130px] flex-1"><label className="block text-xs text-gray-500">Nome</label><input value={eNome} onChange={(e) => setENome(e.target.value)} className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
-                  <div className="min-w-[130px] flex-1"><label className="block text-xs text-gray-500">WhatsApp (DDD)</label><input value={eTel} onChange={(e) => setETel(e.target.value)} placeholder="61 99999-9999" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
-                  <div><label className="block text-xs text-gray-500">Ad.</label><input type="number" min={1} value={eNa} onChange={(e) => setENa(parseInt(e.target.value) || 1)} className="w-14 rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
-                  <div><label className="block text-xs text-gray-500">Cr.</label><input type="number" min={0} value={eNc} onChange={(e) => setENc(parseInt(e.target.value) || 0)} className="w-14 rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
-                  <button onClick={() => salvarEdicao(c.id)} className="rounded-lg bg-green-700 px-3 py-2 text-xs font-semibold text-white">Salvar</button>
-                  <button onClick={() => setEditId(null)} className="rounded-lg border border-gray-300 px-3 py-2 text-xs">Cancelar</button>
+        {view === "home" && (
+          <>
+            <div className="flex gap-2">
+              {[["Adultos", stats.totalAd, "text-green-700"], ["Crianças", stats.totalCr, "text-amber-600"], ["Total pessoas", stats.totalAd + stats.totalCr, "text-orange-700"]].map(([l, n, c]) => (
+                <div key={l as string} className="flex-1 rounded-lg bg-stone-50 p-3 text-center">
+                  <div className={`text-3xl font-bold ${c}`}>{n as number}</div>
+                  <div className="text-xs text-gray-500">{l as string}</div>
                 </div>
-              ) : (
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="min-w-[150px]">
-                    <b>{c.nome}</b> <span className="text-xs text-gray-400">({c.num_adultos}A{c.num_criancas > 0 ? ` · ${c.num_criancas}C` : ""})</span>
-                    {!c.telefone && <span className="ml-1 text-xs text-amber-600">· sem telefone</span>}<br />
-                    {c.respondido ? <span className="text-xs text-green-700">✅ respondeu{c.presenca ? ` (${(c.presenca || "").indexOf("Sim") === 0 ? "vai" : "não vai"})` : ""}</span> : <span className="text-xs text-orange-600">⏳ pendente</span>}
-                  </div>
-                  <div className="flex flex-none gap-1.5">
-                    {c.telefone && <a href={waDe(c)} target="_blank" rel="noreferrer" className="rounded-lg bg-green-600 px-2.5 py-1.5 text-xs font-semibold text-white">WhatsApp</a>}
-                    <button onClick={() => iniciarEdicao(c)} className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs">editar</button>
-                    <button onClick={() => copiar(c.token)} className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs">copiar link</button>
-                    <button onClick={() => delConvidado(c.id, c.nome)} className="rounded-lg border border-orange-400 px-2.5 py-1.5 text-xs text-orange-700">remover</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-          {!convs.length && <p className="text-sm text-gray-400">Nenhum convidado cadastrado ainda.</p>}
-        </div>
-
-        <RodapeConfirmae slug={slug} imagem={data?.convite_imagem_url} />
-
-        <div className="mt-3 rounded-lg border border-dashed border-gray-300 bg-white p-3">
-          <div className="text-sm font-medium">🤖 Disparo automático no WhatsApp {data?.plano !== "pro" && <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-700">🔒 Pro</span>}</div>
-          {data?.plano === "pro"
-            ? <p className="mt-1 text-xs text-gray-500">Disponível no seu plano. Integração com a WhatsApp Cloud API — configuração em breve.</p>
-            : <p className="mt-1 text-xs text-gray-500">Envie os convites automaticamente para toda a lista. Disponível no plano <b>Pro</b>. No Lite, use o botão <b>WhatsApp</b> de cada convidado (1 toque).</p>}
-        </div>
-
-        <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-green-700">🧑 Adultos confirmados ({stats.totalAd})</h2>
-        <div className="mt-1"><Grid items={[...stats.adultSet.map((e) => e.disp + (e.src.length > 1 ? ` (em ${e.src.length})` : "")), ...Array.from({ length: stats.unAd }, () => "(sem nome)")]} /></div>
-
-        <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-green-700">🧒 Crianças confirmadas ({stats.totalCr})</h2>
-        <div className="mt-1"><Grid items={[...stats.childSet.map((e) => e.disp), ...Array.from({ length: stats.unCr }, () => "(sem nome)")]} /></div>
-        {stats.ageStr && <div className="mt-1 text-xs text-gray-600"><b>Por idade:</b> {stats.ageStr}</div>}
-
-        <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-orange-700">❌ Não poderão ir ({stats.naoVai.length})</h2>
-        <div className="mt-1"><Grid items={stats.naoVai} /></div>
-
-        <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-green-700">💚 Recados de quem vai — telão ({stats.msgVai.length})</h2>
-        <div className="mt-1"><Msgs arr={stats.msgVai} /></div>
-
-        <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-orange-700">💬 Recados de quem não vai ({stats.msgNao.length})</h2>
-        <div className="mt-1"><Msgs arr={stats.msgNao} /></div>
-
-        <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-green-700">🗑️ Gerenciar respostas ({rows.length})</h2>
-        <div className="mt-2 space-y-1.5">
-          {[...rows].reverse().map((r) => (
-            <div key={r.id} className="flex items-center justify-between gap-2 rounded-lg border bg-stone-50 px-3 py-2 text-sm">
-              <div><b>{r.nome}</b><br /><span className="text-xs text-gray-500">{(r.presenca || "").indexOf("Sim") === 0 ? `✅ ${r.adultos || "(sem nomes)"}${r.criancas ? " · 👧 " + r.criancas : ""}` : "❌ não vai"}</span></div>
-              <button onClick={() => excluir(r.id, r.nome)} className="flex-none rounded-lg border border-orange-500 px-3 py-1.5 text-xs text-orange-700 hover:bg-orange-500 hover:text-white">excluir</button>
-            </div>
-          ))}
-        </div>
-
-        {data?.plano !== "pro" && adsP.length > 0 && (
-          <div className="mt-5">
-            <h2 className="border-b-2 border-stone-100 pb-1 text-green-700">🤝 Parceiros</h2>
-            <div className="mt-2 space-y-2">
-              {adsP.map((a) => (
-                a.link
-                  ? <a key={a.id} href={a.link} target="_blank" rel="noreferrer" className="block"><img src={a.midia_url || ""} alt={a.titulo || "parceiro"} className="w-full rounded-lg" /></a>
-                  : <img key={a.id} src={a.midia_url || ""} alt={a.titulo || "parceiro"} className="w-full rounded-lg" />
               ))}
-              <div className="text-center text-[10px] uppercase tracking-wide text-gray-400">publicidade</div>
             </div>
+            <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 p-3 text-center text-sm text-slate-700">
+              👀 Visitas ao convite: <b className="text-green-700">{v?.unicos ?? "—"}</b> únicos · <b>{v?.total ?? "—"}</b> no total
+            </div>
+            <div className="mt-2 text-center text-xs text-gray-500">Plano deste evento: <b className={data?.plano === "pro" ? "text-green-700" : "text-gray-700"}>{data?.plano === "pro" ? "Pro" : "Lite"}</b></div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {([["listas", "📊", "Listas & recados"], ["config", "⚙️", "Configurações"], ["relatorio", "📧", "Relatório por e-mail"], ["whatsapp", "🤖", "WhatsApp"], ["respostas", "🗑️", "Gerenciar respostas"]] as [string, string, string][]).map(([vw, ic, lb]) => (
+                <button key={vw} onClick={() => setView(vw)} className="rounded-xl border bg-stone-50 p-3 text-center hover:bg-stone-100">
+                  <div className="text-2xl">{ic}</div>
+                  <div className="mt-1 text-xs font-semibold text-gray-700">{lb}</div>
+                </button>
+              ))}
+            </div>
+
+            <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-green-700">📨 Convidados ({convs.length})</h2>
+            <label className="mt-1 flex items-center gap-2 text-sm text-gray-600">
+              <input type="checkbox" checked={travados} onChange={(e) => toggleTravado(e.target.checked)} />
+              Travar as quantidades (o convidado não altera adultos/crianças)
+            </label>
+            <div className="mt-2 flex flex-wrap items-end gap-2 rounded-lg border bg-stone-50 p-3">
+              <div className="min-w-[140px] flex-1"><label className="text-xs text-gray-500">Nome</label><input value={cNome} onChange={(e) => setCNome(e.target.value)} placeholder="Nome do convidado" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
+              <div className="min-w-[130px]"><label className="text-xs text-gray-500">WhatsApp (DDD)</label><input value={cTel} onChange={(e) => setCTel(e.target.value)} placeholder="61 99999-9999" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
+              <div><label className="block text-xs text-gray-500">Adultos</label><select value={cNa} onChange={(e) => setCNa(parseInt(e.target.value, 10))} className="rounded border border-gray-300 px-2 py-1.5 text-sm">{[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}</select></div>
+              <div><label className="block text-xs text-gray-500">Crianças</label><select value={cNc} onChange={(e) => setCNc(parseInt(e.target.value, 10))} className="rounded border border-gray-300 px-2 py-1.5 text-sm">{[0, 1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}</select></div>
+              <button onClick={addConvidado} className="rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white">Adicionar</button>
+            </div>
+            <div className="mt-2 space-y-1.5">
+              {convs.map((c) => (
+                <div key={c.id} className="rounded-lg border bg-white px-3 py-2 text-sm">
+                  {editId === c.id ? (
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="min-w-[130px] flex-1"><label className="block text-xs text-gray-500">Nome</label><input value={eNome} onChange={(e) => setENome(e.target.value)} className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
+                      <div className="min-w-[130px] flex-1"><label className="block text-xs text-gray-500">WhatsApp (DDD)</label><input value={eTel} onChange={(e) => setETel(e.target.value)} placeholder="61 99999-9999" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
+                      <div><label className="block text-xs text-gray-500">Ad.</label><input type="number" min={1} value={eNa} onChange={(e) => setENa(parseInt(e.target.value) || 1)} className="w-14 rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
+                      <div><label className="block text-xs text-gray-500">Cr.</label><input type="number" min={0} value={eNc} onChange={(e) => setENc(parseInt(e.target.value) || 0)} className="w-14 rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
+                      <button onClick={() => salvarEdicao(c.id)} className="rounded-lg bg-green-700 px-3 py-2 text-xs font-semibold text-white">Salvar</button>
+                      <button onClick={() => setEditId(null)} className="rounded-lg border border-gray-300 px-3 py-2 text-xs">Cancelar</button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="min-w-[150px]">
+                        <b>{c.nome}</b> <span className="text-xs text-gray-400">({c.num_adultos}A{c.num_criancas > 0 ? ` · ${c.num_criancas}C` : ""})</span>
+                        {!c.telefone && <span className="ml-1 text-xs text-amber-600">· sem telefone</span>}<br />
+                        {c.respondido ? <span className="text-xs text-green-700">✅ respondeu{c.presenca ? ` (${(c.presenca || "").indexOf("Sim") === 0 ? "vai" : "não vai"})` : ""}</span> : <span className="text-xs text-orange-600">⏳ pendente</span>}
+                      </div>
+                      <div className="flex flex-none gap-1.5">
+                        {c.telefone && <a href={waDe(c)} target="_blank" rel="noreferrer" className="rounded-lg bg-green-600 px-2.5 py-1.5 text-xs font-semibold text-white">WhatsApp</a>}
+                        <button onClick={() => iniciarEdicao(c)} className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs">editar</button>
+                        <button onClick={() => copiar(c.token)} className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs">copiar link</button>
+                        <button onClick={() => delConvidado(c.id, c.nome)} className="rounded-lg border border-orange-400 px-2.5 py-1.5 text-xs text-orange-700">remover</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {!convs.length && <p className="text-sm text-gray-400">Nenhum convidado cadastrado ainda.</p>}
+            </div>
+
+            <RodapeConfirmae slug={slug} imagem={data?.convite_imagem_url} />
+
+            {data?.plano !== "pro" && adsP.length > 0 && (
+              <div className="mt-5">
+                <h2 className="border-b-2 border-stone-100 pb-1 text-green-700">🤝 Parceiros</h2>
+                <div className="mt-2 space-y-2">
+                  {adsP.map((a) => (
+                    a.link
+                      ? <a key={a.id} href={a.link} target="_blank" rel="noreferrer" className="block"><img src={a.midia_url || ""} alt={a.titulo || "parceiro"} className="w-full rounded-lg" /></a>
+                      : <img key={a.id} src={a.midia_url || ""} alt={a.titulo || "parceiro"} className="w-full rounded-lg" />
+                  ))}
+                  <div className="text-center text-[10px] uppercase tracking-wide text-gray-400">publicidade</div>
+                </div>
+              </div>
+            )}
+
+            <button onClick={recarregar} className="mt-5 w-full rounded-lg border border-green-600 py-3 text-sm font-bold text-green-700">🔄 Atualizar agora</button>
+          </>
+        )}
+
+        {view === "listas" && (
+          <>
+            <h2 className="border-b-2 border-stone-100 pb-1 text-green-700">🧑 Adultos confirmados ({stats.totalAd})</h2>
+            <div className="mt-1"><Grid items={[...stats.adultSet.map((e) => e.disp + (e.src.length > 1 ? ` (em ${e.src.length})` : "")), ...Array.from({ length: stats.unAd }, () => "(sem nome)")]} /></div>
+            <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-green-700">🧒 Crianças confirmadas ({stats.totalCr})</h2>
+            <div className="mt-1"><Grid items={[...stats.childSet.map((e) => e.disp), ...Array.from({ length: stats.unCr }, () => "(sem nome)")]} /></div>
+            {stats.ageStr && <div className="mt-1 text-xs text-gray-600"><b>Por idade:</b> {stats.ageStr}</div>}
+            <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-orange-700">❌ Não poderão ir ({stats.naoVai.length})</h2>
+            <div className="mt-1"><Grid items={stats.naoVai} /></div>
+            <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-green-700">💚 Recados de quem vai — telão ({stats.msgVai.length})</h2>
+            <div className="mt-1"><Msgs arr={stats.msgVai} /></div>
+            <h2 className="mt-5 border-b-2 border-stone-100 pb-1 text-orange-700">💬 Recados de quem não vai ({stats.msgNao.length})</h2>
+            <div className="mt-1"><Msgs arr={stats.msgNao} /></div>
+          </>
+        )}
+
+        {view === "config" && (
+          <>
+            <div className="rounded-lg border bg-stone-50 p-3">
+              <div className="text-sm font-medium">🖼️ Imagem do convite {data?.plano !== "pro" && <span className="text-xs font-normal text-gray-500">(usada no plano Lite)</span>}</div>
+              {data?.plano === "pro"
+                ? <p className="mt-1 text-xs text-gray-500">Seu plano é Pro: o convite usa o tema personalizado. (A imagem só é usada no plano Lite.)</p>
+                : <p className="mt-1 text-xs text-gray-500">No plano Lite, o convite é a imagem que você enviar aqui (faça a arte onde quiser e suba o JPG/PNG).</p>}
+              {data?.convite_imagem_url && <img src={data.convite_imagem_url} alt="convite" className="mt-2 max-h-40 rounded-lg border" />}
+              <input type="file" accept="image/*" disabled={imgBusy} onChange={(e) => uploadConvite(e.target.files && e.target.files[0] ? e.target.files[0] : null)} className="mt-2 block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-green-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white" />
+              {imgBusy && <p className="mt-1 text-xs text-gray-500">Enviando…</p>}
+            </div>
+            <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3">
+              <div className="mb-2 text-sm">⏰ <b>Horário do jogo:</b> {data?.horario?.trim() ? data.horario : "a confirmar (mostrando SAVE THE DATE)"}</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <input value={hInput} onChange={(e) => setHInput(e.target.value)} placeholder="ex: 16h" className="min-w-[120px] flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-600" />
+                <button disabled={busy} onClick={() => salvarHorario(hInput)} className="rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Confirmar horário</button>
+                <button disabled={busy} onClick={() => { setHInput(""); salvarHorario(""); }} className="rounded-lg border border-orange-400 px-3 py-2 text-sm text-orange-700">Voltar p/ Save the Date</button>
+              </div>
+            </div>
+            <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+              <div className="mb-2 text-sm">🎤 <b>Último passo (grito + foto pro telão):</b> {data?.ultimo_passo ? "ativado" : "DESATIVADO"}</div>
+              <div className="flex gap-2">
+                <button disabled={busy} onClick={() => toggleUltimo(true)} className="rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Ativar</button>
+                <button disabled={busy} onClick={() => toggleUltimo(false)} className="rounded-lg border border-orange-400 px-3 py-2 text-sm text-orange-700">Desativar</button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {view === "relatorio" && (
+          <>
+            <div className="rounded-lg border border-sky-200 bg-sky-50 p-3">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" checked={agAtivo} onChange={(e) => setAgAtivo(e.target.checked)} />
+                📅 Enviar relatório automático por e-mail
+              </label>
+              <div className={agAtivo ? "mt-2" : "mt-2 pointer-events-none opacity-50"}>
+                <div className="text-xs text-gray-600">Dias da semana:</div>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((lbl, i) => (
+                    <button key={i} type="button" onClick={() => toggleDia(i)} className={`rounded-lg px-2.5 py-1 text-xs ${agDias.includes(i) ? "bg-green-700 text-white" : "border border-gray-300 bg-white text-gray-600"}`}>{lbl}</button>
+                  ))}
+                </div>
+                <div className="mt-2 text-xs text-gray-600">Horários:</div>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  {agHorarios.map((h) => (
+                    <span key={h} className="inline-flex items-center gap-1 rounded-lg border bg-white px-2 py-1 text-xs">{h}<button type="button" onClick={() => rmHora(h)} className="text-orange-600">✕</button></span>
+                  ))}
+                  <input type="time" value={novaHora} onChange={(e) => setNovaHora(e.target.value)} className="rounded border border-gray-300 px-2 py-1 text-xs" />
+                  <button type="button" onClick={addHora} className="rounded-lg border border-gray-300 px-2 py-1 text-xs">+ adicionar</button>
+                </div>
+              </div>
+              <button disabled={busy} onClick={salvarAgenda} className="mt-3 rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Salvar agenda</button>
+              <p className="mt-2 text-xs text-gray-500">Fuso de Brasília. Começa a enviar quando o domínio do remetente estiver verificado.</p>
+            </div>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button onClick={enviarEmail} disabled={enviandoEmail} className="flex-1 rounded-lg bg-green-700 py-3 text-sm font-bold text-white disabled:opacity-50">{enviandoEmail ? "Enviando…" : "📧 Enviar relatório agora"}</button>
+              <button onClick={megaCartaz} className="flex-1 rounded-lg bg-amber-500 py-3 text-sm font-bold text-amber-950">🖼️ Gerar prompt do Mega Cartaz</button>
+            </div>
+          </>
+        )}
+
+        {view === "whatsapp" && (
+          <div className="rounded-lg border border-dashed border-gray-300 bg-white p-3">
+            <div className="text-sm font-medium">🤖 Disparo automático no WhatsApp {data?.plano !== "pro" && <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-700">🔒 Pro</span>}</div>
+            {data?.plano === "pro"
+              ? <p className="mt-1 text-xs text-gray-500">Disponível no seu plano. Integração com a WhatsApp Cloud API — configuração em breve.</p>
+              : <p className="mt-1 text-xs text-gray-500">Envie os convites automaticamente para toda a lista. Disponível no plano <b>Pro</b>. No Lite, use o botão <b>WhatsApp</b> de cada convidado (1 toque).</p>}
           </div>
         )}
 
-        <div className="mt-5 flex flex-wrap gap-2">
-          <button onClick={enviarEmail} disabled={enviandoEmail} className="flex-1 rounded-lg bg-green-700 py-3 text-sm font-bold text-white disabled:opacity-50">{enviandoEmail ? "Enviando…" : "📧 Enviar relatório"}</button>
-          <button onClick={megaCartaz} className="flex-1 rounded-lg bg-amber-500 py-3 text-sm font-bold text-amber-950">🖼️ Gerar prompt do Mega Cartaz</button>
-          <button onClick={recarregar} className="flex-1 rounded-lg border border-green-600 py-3 text-sm font-bold text-green-700">🔄 Atualizar agora</button>
-        </div>
+        {view === "respostas" && (
+          <>
+            <h2 className="border-b-2 border-stone-100 pb-1 text-green-700">🗑️ Gerenciar respostas ({rows.length})</h2>
+            <div className="mt-2 space-y-1.5">
+              {[...rows].reverse().map((r) => (
+                <div key={r.id} className="flex items-center justify-between gap-2 rounded-lg border bg-stone-50 px-3 py-2 text-sm">
+                  <div><b>{r.nome}</b><br /><span className="text-xs text-gray-500">{(r.presenca || "").indexOf("Sim") === 0 ? `✅ ${r.adultos || "(sem nomes)"}${r.criancas ? " · 👧 " + r.criancas : ""}` : "❌ não vai"}</span></div>
+                  <button onClick={() => excluir(r.id, r.nome)} className="flex-none rounded-lg border border-orange-500 px-3 py-1.5 text-xs text-orange-700 hover:bg-orange-500 hover:text-white">excluir</button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
