@@ -80,6 +80,8 @@ export default function Painel({ slug }: { slug: string }) {
   const [convs, setConvs] = useState<ConvRow[]>([]);
   const [travados, setTravados] = useState(false);
   const [cNome, setCNome] = useState(""); const [cTel, setCTel] = useState(""); const [cNa, setCNa] = useState(2); const [cNc, setCNc] = useState(0);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [eNome, setENome] = useState(""); const [eTel, setETel] = useState(""); const [eNa, setENa] = useState(1); const [eNc, setENc] = useState(0);
   const [agAtivo, setAgAtivo] = useState(false);
   const [agHorarios, setAgHorarios] = useState<string[]>([]);
   const [agDias, setAgDias] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
@@ -145,6 +147,8 @@ export default function Painel({ slug }: { slug: string }) {
     setCNome(""); setCTel(""); await loadConvidados(pwd);
   }
   async function delConvidado(id: string, nome: string) { if (!confirm(`Remover convidado ${nome}?`)) return; await supabase.rpc("painel_convidado_del", { p_slug: slug, p_pwd: pwd, p_id: id }); await loadConvidados(pwd); }
+  function iniciarEdicao(c: ConvRow) { setEditId(c.id); setENome(c.nome); setETel(c.telefone || ""); setENa(c.num_adultos); setENc(c.num_criancas); }
+  async function salvarEdicao(id: string) { await supabase.rpc("painel_convidado_upd", { p_slug: slug, p_pwd: pwd, p_id: id, p_nome: eNome, p_tel: eTel, p_na: eNa, p_nc: eNc }); setEditId(null); await loadConvidados(pwd); }
   async function toggleTravado(v: boolean) { await supabase.rpc("painel_set_travado", { p_slug: slug, p_pwd: pwd, p_val: v }); setTravados(v); }
   function toggleDia(d: number) { setAgDias((p) => p.includes(d) ? p.filter((x) => x !== d) : [...p, d].sort((a, b) => a - b)); }
   function addHora() { const h = novaHora.trim(); if (/^\d{1,2}:\d{2}$/.test(h) && !agHorarios.includes(h)) setAgHorarios((p) => [...p, h].sort()); }
@@ -330,16 +334,31 @@ export default function Painel({ slug }: { slug: string }) {
         </div>
         <div className="mt-2 space-y-1.5">
           {convs.map((c) => (
-            <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-white px-3 py-2 text-sm">
-              <div className="min-w-[150px]">
-                <b>{c.nome}</b> <span className="text-xs text-gray-400">({c.num_adultos}A{c.num_criancas > 0 ? ` · ${c.num_criancas}C` : ""})</span><br />
-                {c.respondido ? <span className="text-xs text-green-700">✅ respondeu{c.presenca ? ` (${(c.presenca || "").indexOf("Sim") === 0 ? "vai" : "não vai"})` : ""}</span> : <span className="text-xs text-orange-600">⏳ pendente</span>}
-              </div>
-              <div className="flex flex-none gap-1.5">
-                {c.telefone && <a href={waDe(c)} target="_blank" rel="noreferrer" className="rounded-lg bg-green-600 px-2.5 py-1.5 text-xs font-semibold text-white">WhatsApp</a>}
-                <button onClick={() => copiar(c.token)} className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs">copiar link</button>
-                <button onClick={() => delConvidado(c.id, c.nome)} className="rounded-lg border border-orange-400 px-2.5 py-1.5 text-xs text-orange-700">remover</button>
-              </div>
+            <div key={c.id} className="rounded-lg border bg-white px-3 py-2 text-sm">
+              {editId === c.id ? (
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="min-w-[130px] flex-1"><label className="block text-xs text-gray-500">Nome</label><input value={eNome} onChange={(e) => setENome(e.target.value)} className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
+                  <div className="min-w-[130px] flex-1"><label className="block text-xs text-gray-500">WhatsApp (DDD)</label><input value={eTel} onChange={(e) => setETel(e.target.value)} placeholder="61 99999-9999" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-500">Ad.</label><input type="number" min={1} value={eNa} onChange={(e) => setENa(parseInt(e.target.value) || 1)} className="w-14 rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-500">Cr.</label><input type="number" min={0} value={eNc} onChange={(e) => setENc(parseInt(e.target.value) || 0)} className="w-14 rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
+                  <button onClick={() => salvarEdicao(c.id)} className="rounded-lg bg-green-700 px-3 py-2 text-xs font-semibold text-white">Salvar</button>
+                  <button onClick={() => setEditId(null)} className="rounded-lg border border-gray-300 px-3 py-2 text-xs">Cancelar</button>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-[150px]">
+                    <b>{c.nome}</b> <span className="text-xs text-gray-400">({c.num_adultos}A{c.num_criancas > 0 ? ` · ${c.num_criancas}C` : ""})</span>
+                    {!c.telefone && <span className="ml-1 text-xs text-amber-600">· sem telefone</span>}<br />
+                    {c.respondido ? <span className="text-xs text-green-700">✅ respondeu{c.presenca ? ` (${(c.presenca || "").indexOf("Sim") === 0 ? "vai" : "não vai"})` : ""}</span> : <span className="text-xs text-orange-600">⏳ pendente</span>}
+                  </div>
+                  <div className="flex flex-none gap-1.5">
+                    {c.telefone && <a href={waDe(c)} target="_blank" rel="noreferrer" className="rounded-lg bg-green-600 px-2.5 py-1.5 text-xs font-semibold text-white">WhatsApp</a>}
+                    <button onClick={() => iniciarEdicao(c)} className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs">editar</button>
+                    <button onClick={() => copiar(c.token)} className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs">copiar link</button>
+                    <button onClick={() => delConvidado(c.id, c.nome)} className="rounded-lg border border-orange-400 px-2.5 py-1.5 text-xs text-orange-700">remover</button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
           {!convs.length && <p className="text-sm text-gray-400">Nenhum convidado cadastrado ainda.</p>}
