@@ -152,6 +152,18 @@ export default function Painel({ slug }: { slug: string }) {
   async function delConvidado(id: string, nome: string) { if (!confirm(`Remover convidado ${nome}?`)) return; await supabase.rpc("painel_convidado_del", { p_slug: slug, p_pwd: pwd, p_id: id }); await loadConvidados(pwd); }
   function iniciarEdicao(c: ConvRow) { setEditId(c.id); setENome(c.nome); setETel(c.telefone || ""); setEEmail(c.email || ""); setENa(c.num_adultos); setENc(c.num_criancas); }
   async function salvarEdicao(id: string) { await supabase.rpc("painel_convidado_upd", { p_slug: slug, p_pwd: pwd, p_id: id, p_nome: eNome, p_tel: eTel, p_email: eEmail, p_na: eNa, p_nc: eNc }); setEditId(null); await loadConvidados(pwd); }
+  async function enviarConvitesEmail() {
+    if (!confirm("Enviar o convite por e-mail para todos os convidados que têm e-mail cadastrado?")) return;
+    const { data, error } = await supabase.functions.invoke("enviar_convites", { body: { slug, pwd } });
+    const d = data as { ok?: boolean; enviados?: number; aviso?: string } | null;
+    if (error || !d || !d.ok) { alert("Não foi possível enviar os e-mails agora (o remetente confirmae.io precisa estar verificado no Resend)."); return; }
+    alert(`Convites por e-mail: ${d.enviados} enviado(s).` + (d.aviso ? " " + d.aviso : ""));
+  }
+  function avisoWhatsMassa() {
+    if (data?.plano === "pro") alert("Disparo automático no WhatsApp (Cloud API) — em configuração no seu plano Pro. Por enquanto, use o botão WhatsApp de cada convidado.");
+    else alert("O envio em massa pelo WhatsApp é do plano Pro (WhatsApp Cloud API). No Lite, use o botão WhatsApp de cada convidado (1 toque) — é instantâneo.");
+  }
+  async function enviarConvitesTodos() { await enviarConvitesEmail(); avisoWhatsMassa(); }
   async function toggleTravado(v: boolean) { await supabase.rpc("painel_set_travado", { p_slug: slug, p_pwd: pwd, p_val: v }); setTravados(v); }
   function toggleDia(d: number) { setAgDias((p) => p.includes(d) ? p.filter((x) => x !== d) : [...p, d].sort((a, b) => a - b)); }
   function addHora() { const h = novaHora.trim(); if (/^\d{1,2}:\d{2}$/.test(h) && !agHorarios.includes(h)) setAgHorarios((p) => [...p, h].sort()); }
@@ -298,6 +310,12 @@ export default function Painel({ slug }: { slug: string }) {
               <div><label className="block text-xs text-gray-500">Crianças</label><select value={cNc} onChange={(e) => setCNc(parseInt(e.target.value, 10))} className="rounded border border-gray-300 px-2 py-1.5 text-sm">{[0, 1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}</select></div>
               <button onClick={addConvidado} className="rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white">Adicionar</button>
             </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button onClick={enviarConvitesEmail} className="rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-700">📧 Enviar convite por e-mail</button>
+              <button onClick={avisoWhatsMassa} className="rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold text-white hover:bg-green-700">💚 Enviar convite por WhatsApp</button>
+              <button onClick={enviarConvitesTodos} className="rounded-lg bg-gray-800 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-900">👥 Enviar a todos os contatos</button>
+            </div>
+            <p className="mt-1 text-xs text-gray-400">E-mail: envia o link pessoal a quem tem e-mail. WhatsApp em massa é do plano Pro; no Lite use o botão de cada convidado.</p>
             <div className="mt-2 space-y-1.5">
               {convs.map((c) => (
                 <div key={c.id} className="rounded-lg border bg-white px-3 py-2 text-sm">
