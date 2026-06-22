@@ -14,6 +14,7 @@ export default function Conta() {
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [loading, setLoading] = useState(true);
   const [pagando, setPagando] = useState<string | null>(null);
+  const [ehAdmin, setEhAdmin] = useState(false);
   const pagamentoOk = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("pagamento") === "ok";
 
   useEffect(() => {
@@ -23,6 +24,7 @@ export default function Conta() {
       carregado = true;
       setEmail(session.user.email ?? null);
       setUserId(session.user.id);
+      supabase.rpc("is_admin").then(({ data }) => setEhAdmin(data === true), () => {});
       const { data } = await supabase.from("eventos").select("id,nome,slug,plano").order("created_at", { ascending: false });
       const evs = (data as Ev[]) || [];
       // Conta Pro = assinatura ativa OU algum evento Pro. Pro vai direto pro ambiente de gestao;
@@ -101,7 +103,12 @@ export default function Conta() {
     <div className="mx-auto max-w-2xl px-4 py-8">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-green-700">Minha conta</h1>
-        <button onClick={sair} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50">Sair</button>
+        <div className="flex items-center gap-2">
+          {ehAdmin && (
+            <a href="/sistema" className="rounded-lg bg-gray-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-gray-800">⚙️ Sistema</a>
+          )}
+          <button onClick={sair} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50">Sair</button>
+        </div>
       </div>
       <p className="mt-1 text-sm text-gray-500">{email}</p>
 
