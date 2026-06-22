@@ -12,7 +12,7 @@ type Row = {
   mensagem: string | null; foto: string | null; prev: string | null;
 };
 type Dados = { ok?: boolean; error?: string; horario?: string; ultimo_passo?: boolean; visitas?: { total: number; unicos: number }; report_ativo?: boolean; report_horarios?: string; report_dias?: string; plano?: string; convite_imagem_url?: string | null; rows?: Row[] };
-type ConvRow = { id: string; token: string; nome: string; telefone: string | null; num_adultos: number; num_criancas: number; respondido: boolean; presenca: string | null };
+type ConvRow = { id: string; token: string; nome: string; telefone: string | null; email: string | null; num_adultos: number; num_criancas: number; respondido: boolean; presenca: string | null };
 type AnuncioP = { id: string; tipo: string; titulo: string | null; midia_url: string | null; link: string | null };
 
 const norm = (s: string) => (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
@@ -80,9 +80,9 @@ export default function Painel({ slug }: { slug: string }) {
   const [enviandoEmail, setEnviandoEmail] = useState(false);
   const [convs, setConvs] = useState<ConvRow[]>([]);
   const [travados, setTravados] = useState(false);
-  const [cNome, setCNome] = useState(""); const [cTel, setCTel] = useState(""); const [cNa, setCNa] = useState(2); const [cNc, setCNc] = useState(0);
+  const [cNome, setCNome] = useState(""); const [cTel, setCTel] = useState(""); const [cEmail, setCEmail] = useState(""); const [cNa, setCNa] = useState(2); const [cNc, setCNc] = useState(0);
   const [editId, setEditId] = useState<string | null>(null);
-  const [eNome, setENome] = useState(""); const [eTel, setETel] = useState(""); const [eNa, setENa] = useState(1); const [eNc, setENc] = useState(0);
+  const [eNome, setENome] = useState(""); const [eTel, setETel] = useState(""); const [eEmail, setEEmail] = useState(""); const [eNa, setENa] = useState(1); const [eNc, setENc] = useState(0);
   const [agAtivo, setAgAtivo] = useState(false);
   const [agHorarios, setAgHorarios] = useState<string[]>([]);
   const [agDias, setAgDias] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
@@ -143,14 +143,15 @@ export default function Painel({ slug }: { slug: string }) {
     return `https://wa.me/${full}?text=${encodeURIComponent(msg)}`;
   }
   function copiar(token: string) { try { navigator.clipboard?.writeText(linkDe(token)); alert("Link copiado!"); } catch { alert(linkDe(token)); } }
+  function mailDe(c: ConvRow) { return `mailto:${c.email}?subject=${encodeURIComponent("Confirme sua presenca")}&body=${encodeURIComponent("Oi, " + c.nome + "! Confirme sua presenca pelo seu link: " + linkDe(c.token))}`; }
   async function addConvidado() {
     if (!cNome.trim()) { alert("Coloque o nome do convidado."); return; }
-    await supabase.rpc("painel_convidado_add", { p_slug: slug, p_pwd: pwd, p_nome: cNome, p_tel: cTel, p_na: cNa, p_nc: cNc });
-    setCNome(""); setCTel(""); await loadConvidados(pwd);
+    await supabase.rpc("painel_convidado_add", { p_slug: slug, p_pwd: pwd, p_nome: cNome, p_tel: cTel, p_email: cEmail, p_na: cNa, p_nc: cNc });
+    setCNome(""); setCTel(""); setCEmail(""); await loadConvidados(pwd);
   }
   async function delConvidado(id: string, nome: string) { if (!confirm(`Remover convidado ${nome}?`)) return; await supabase.rpc("painel_convidado_del", { p_slug: slug, p_pwd: pwd, p_id: id }); await loadConvidados(pwd); }
-  function iniciarEdicao(c: ConvRow) { setEditId(c.id); setENome(c.nome); setETel(c.telefone || ""); setENa(c.num_adultos); setENc(c.num_criancas); }
-  async function salvarEdicao(id: string) { await supabase.rpc("painel_convidado_upd", { p_slug: slug, p_pwd: pwd, p_id: id, p_nome: eNome, p_tel: eTel, p_na: eNa, p_nc: eNc }); setEditId(null); await loadConvidados(pwd); }
+  function iniciarEdicao(c: ConvRow) { setEditId(c.id); setENome(c.nome); setETel(c.telefone || ""); setEEmail(c.email || ""); setENa(c.num_adultos); setENc(c.num_criancas); }
+  async function salvarEdicao(id: string) { await supabase.rpc("painel_convidado_upd", { p_slug: slug, p_pwd: pwd, p_id: id, p_nome: eNome, p_tel: eTel, p_email: eEmail, p_na: eNa, p_nc: eNc }); setEditId(null); await loadConvidados(pwd); }
   async function toggleTravado(v: boolean) { await supabase.rpc("painel_set_travado", { p_slug: slug, p_pwd: pwd, p_val: v }); setTravados(v); }
   function toggleDia(d: number) { setAgDias((p) => p.includes(d) ? p.filter((x) => x !== d) : [...p, d].sort((a, b) => a - b)); }
   function addHora() { const h = novaHora.trim(); if (/^\d{1,2}:\d{2}$/.test(h) && !agHorarios.includes(h)) setAgHorarios((p) => [...p, h].sort()); }
@@ -292,6 +293,7 @@ export default function Painel({ slug }: { slug: string }) {
             <div className="mt-2 flex flex-wrap items-end gap-2 rounded-lg border bg-stone-50 p-3">
               <div className="min-w-[140px] flex-1"><label className="text-xs text-gray-500">Nome</label><input value={cNome} onChange={(e) => setCNome(e.target.value)} placeholder="Nome do convidado" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
               <div className="min-w-[130px]"><label className="text-xs text-gray-500">WhatsApp (DDD)</label><input value={cTel} onChange={(e) => setCTel(e.target.value)} placeholder="61 99999-9999" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
+              <div className="min-w-[150px] flex-1"><label className="text-xs text-gray-500">E-mail</label><input value={cEmail} onChange={(e) => setCEmail(e.target.value)} placeholder="email@exemplo.com" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
               <div><label className="block text-xs text-gray-500">Adultos</label><select value={cNa} onChange={(e) => setCNa(parseInt(e.target.value, 10))} className="rounded border border-gray-300 px-2 py-1.5 text-sm">{[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}</select></div>
               <div><label className="block text-xs text-gray-500">Crianças</label><select value={cNc} onChange={(e) => setCNc(parseInt(e.target.value, 10))} className="rounded border border-gray-300 px-2 py-1.5 text-sm">{[0, 1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}</select></div>
               <button onClick={addConvidado} className="rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white">Adicionar</button>
@@ -303,6 +305,7 @@ export default function Painel({ slug }: { slug: string }) {
                     <div className="flex flex-wrap items-end gap-2">
                       <div className="min-w-[130px] flex-1"><label className="block text-xs text-gray-500">Nome</label><input value={eNome} onChange={(e) => setENome(e.target.value)} className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
                       <div className="min-w-[130px] flex-1"><label className="block text-xs text-gray-500">WhatsApp (DDD)</label><input value={eTel} onChange={(e) => setETel(e.target.value)} placeholder="61 99999-9999" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
+                      <div className="min-w-[130px] flex-1"><label className="block text-xs text-gray-500">E-mail</label><input value={eEmail} onChange={(e) => setEEmail(e.target.value)} placeholder="email@exemplo.com" className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
                       <div><label className="block text-xs text-gray-500">Ad.</label><input type="number" min={1} value={eNa} onChange={(e) => setENa(parseInt(e.target.value) || 1)} className="w-14 rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
                       <div><label className="block text-xs text-gray-500">Cr.</label><input type="number" min={0} value={eNc} onChange={(e) => setENc(parseInt(e.target.value) || 0)} className="w-14 rounded border border-gray-300 px-2 py-1.5 text-sm" /></div>
                       <button onClick={() => salvarEdicao(c.id)} className="rounded-lg bg-green-700 px-3 py-2 text-xs font-semibold text-white">Salvar</button>
@@ -317,6 +320,7 @@ export default function Painel({ slug }: { slug: string }) {
                       </div>
                       <div className="flex flex-none gap-1.5">
                         {c.telefone && <a href={waDe(c)} target="_blank" rel="noreferrer" className="rounded-lg bg-green-600 px-2.5 py-1.5 text-xs font-semibold text-white">WhatsApp</a>}
+                        {c.email && <a href={mailDe(c)} className="rounded-lg bg-sky-600 px-2.5 py-1.5 text-xs font-semibold text-white">e-mail</a>}
                         <button onClick={() => iniciarEdicao(c)} className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs">editar</button>
                         <button onClick={() => copiar(c.token)} className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs">copiar link</button>
                         <button onClick={() => delConvidado(c.id, c.nome)} className="rounded-lg border border-orange-400 px-2.5 py-1.5 text-xs text-orange-700">remover</button>

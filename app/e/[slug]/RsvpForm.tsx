@@ -116,6 +116,9 @@ export default function RsvpForm({ evento, convidado, slug }: { evento: EventoPu
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [ads, setAds] = useState<Anuncio[]>([]);
+  const [whats, setWhats] = useState("");
+  const [email, setEmail] = useState("");
+  const [meuLink, setMeuLink] = useState("");
 
   // anúncios (somente no plano Lite)
   useEffect(() => {
@@ -187,14 +190,24 @@ export default function RsvpForm({ evento, convidado, slug }: { evento: EventoPu
     const adStr = quer ? adultos.map((a) => a.trim()).filter(Boolean).join(", ") : "";
     const crStr = quer ? criancas.map((c) => c.nome.trim() + (c.idade ? ` (${c.idade} anos)` : "")).filter(Boolean).join(", ") : "";
     const foto_url = await uploadFoto();
+    let convId = convidado?.convidado_id || null;
+    let tk = "";
+    if (!convId && nome.trim()) {
+      try {
+        const { data: up } = await supabase.rpc("rsvp_upsert_convidado", { p_slug: slug, p_nome: nome.trim(), p_tel: whats, p_email: email, p_na: quer ? adultos.length : 1, p_nc: quer ? criancas.length : 0 });
+        const u = up as { ok?: boolean; id?: string; token?: string } | null;
+        if (u && u.ok) { convId = u.id || null; tk = u.token || ""; }
+      } catch { /* nao bloqueia o RSVP */ }
+    }
     const { error } = await supabase.from("confirmacoes").insert({
       evento_id: evento.id, nome: nome.trim(), presenca: quer ? "Sim" : "Não",
       num_adultos: quer ? adultos.length : null, adultos: adStr || null,
       num_criancas: quer ? criancas.length : null, criancas: crStr || null,
-      mensagem: mensagem.trim() || null, foto_url, convidado_id: convidado?.convidado_id || null,
+      mensagem: mensagem.trim() || null, foto_url, convidado_id: convId,
     });
     setEnviando(false);
     if (error) { setErro("Não foi possível enviar: " + error.message); return; }
+    if (tk) { try { localStorage.setItem("confirmae_tk_" + slug, tk); } catch { /* */ } setMeuLink((typeof window !== "undefined" ? window.location.origin : "https://confirmae.io") + "/e/" + slug + "?c=" + tk); }
     setEnviado(true);
   }
 
@@ -226,6 +239,8 @@ export default function RsvpForm({ evento, convidado, slug }: { evento: EventoPu
                 <div className="field">
                   <label className="q" htmlFor="nome">Pra começar, qual é o seu nome completo?</label>
                   <input id="nome" type="text" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Digite seu nome" />
+                  <input type="tel" value={whats} onChange={(e) => setWhats(e.target.value)} placeholder="Seu WhatsApp com DDD (opcional)" />
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Seu e-mail (opcional)" />
                   {erro && <div className="err">{erro}</div>}
                   <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
                     <button type="button" className="btn" onClick={() => escolher(true)}>Eu vou! 🇧🇷⚽</button>
@@ -313,6 +328,7 @@ export default function RsvpForm({ evento, convidado, slug }: { evento: EventoPu
                   {evento.local && <div className="localline" style={{ marginTop: 8 }}>📍 {evento.local}</div>}
                 </>
               ) : (<p>Que pena! Fica para uma próxima. Obrigado por avisar 💚</p>)}
+              {meuLink && (<div style={{ marginTop: 14, padding: "10px 12px", background: "rgba(255,255,255,.15)", borderRadius: 10, fontSize: 13 }}>Seu link pessoal (salve para alterar depois):<br /><a href={meuLink} style={{ color: "#ead06a", wordBreak: "break-all", fontWeight: 700 }}>{meuLink}</a></div>)}
             </div>
           )}
         </div>
@@ -343,6 +359,7 @@ export default function RsvpForm({ evento, convidado, slug }: { evento: EventoPu
           <div className="mt-1 text-lg text-gray-500">{vai ? "presença confirmada" : "resposta registrada"}</div>
           {vai ? (<><p className="mt-4 text-gray-700">A gente se vê{dataFmt ? ` dia ${dataFmt}` : ""}! 🎉</p>{evento.local && <p className="mt-2 font-semibold text-green-700">📍 {evento.local}</p>}</>) : (<p className="mt-4 text-gray-700">Que pena! Fica para uma próxima. Obrigado por avisar 💚</p>)}
         </div>
+        {meuLink && (<div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-3 text-center text-sm"><p className="text-gray-700">Seu link pessoal (salve para alterar sua resposta depois):</p><a href={meuLink} className="mt-1 block break-all font-semibold text-green-700">{meuLink}</a></div>)}
         <Anuncios items={ads} />
         <RodapeConfirmae slug={slug} titulo={evento.nome} imagem={evento.convite_imagem_url} />
       </Tela>
@@ -362,6 +379,9 @@ export default function RsvpForm({ evento, convidado, slug }: { evento: EventoPu
           <div>
             <label className="mb-1 block text-sm font-medium">Pra começar, qual é o seu nome completo?</label>
             <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Digite seu nome" className="w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600" />
+            <input value={whats} onChange={(e) => setWhats(e.target.value)} placeholder="Seu WhatsApp com DDD (opcional)" className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600" />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Seu e-mail (opcional)" className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-green-600" />
+            <p className="mt-1 text-xs text-gray-400">Deixe seu contato para receber seu link e lembretes.</p>
             {erro && <p className="mt-2 text-sm text-red-600">{erro}</p>}
             <div className="mt-4 flex gap-3">
               <button onClick={() => escolher(true)} className="flex-1 rounded-lg bg-green-700 py-3 font-semibold text-white hover:bg-green-800">Eu vou! 🎉</button>
