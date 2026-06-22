@@ -1,4 +1,5 @@
 "use client";
+import RodapeConfirmae from "@/app/_components/RodapeConfirmae";
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase";
@@ -248,6 +249,7 @@ export default function Painel({ slug }: { slug: string }) {
 
   return (
     <div className="mx-auto max-w-3xl px-3 py-6">
+      <a href="/admin" className="mb-3 inline-block text-sm font-semibold text-green-700 hover:underline">← Voltar aos eventos</a>
       <div className="rounded-t-xl bg-green-700 p-4 text-center text-amber-50">
         <h1 className="text-xl font-bold">⚽ Arraiá rumo ao Hexa 🏆</h1>
         <div className="text-xs opacity-90">Painel de confirmações</div>
@@ -363,6 +365,8 @@ export default function Painel({ slug }: { slug: string }) {
           ))}
           {!convs.length && <p className="text-sm text-gray-400">Nenhum convidado cadastrado ainda.</p>}
         </div>
+
+        <RodapeConfirmae slug={slug} imagem={data?.convite_imagem_url} />
 
         <div className="mt-3 rounded-lg border border-dashed border-gray-300 bg-white p-3">
           <div className="text-sm font-medium">🤖 Disparo automático no WhatsApp {data?.plano !== "pro" && <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-700">🔒 Pro</span>}</div>

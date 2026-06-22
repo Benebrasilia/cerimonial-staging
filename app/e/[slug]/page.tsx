@@ -41,7 +41,7 @@ export default async function Page({ params, searchParams }: Params) {
           strategy="afterInteractive"
         />
       )}
-      <RsvpForm evento={ev} convidado={convidado} />
+      <RsvpForm evento={ev} convidado={convidado} slug={slug} />
     </>
   );
 }

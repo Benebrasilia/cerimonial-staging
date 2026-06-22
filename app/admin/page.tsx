@@ -234,7 +234,7 @@ function Painel({ email }: { email: string }) {
                   </div>
                   <div className="ml-3 flex shrink-0 gap-2">
                     <a href={`/e/${ev.slug}/painel`} className="rounded-md bg-green-700 px-3 py-1 text-sm font-semibold text-white hover:bg-green-800">
-                      Convidados
+                      Detalhes
                     </a>
                     <button onClick={() => setEditando(ev)} className="rounded-md border border-green-600 px-3 py-1 text-sm font-medium text-green-700 hover:bg-green-50">
                       Editar

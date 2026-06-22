@@ -1,4 +1,5 @@
 "use client";
+import RodapeConfirmae from "@/app/_components/RodapeConfirmae";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase";
@@ -94,7 +95,7 @@ const ARR_CSS = `
 @media (max-width:620px){.arr .card{padding:24px 18px 30px;border-width:2px;}.arr .t1{font-size:38px;}.arr .scr{font-size:30px;}.arr .t2{font-size:46px;letter-spacing:3px;}.arr .selo{font-size:18px;padding:7px 16px;}.arr .subhdr{font-size:14px;}.arr label.q{font-size:18px;}.arr .btn{font-size:16px;letter-spacing:0;padding:13px 8px;}}
 `;
 
-export default function RsvpForm({ evento, convidado }: { evento: EventoPublico; convidado?: Convidado | null }) {
+export default function RsvpForm({ evento, convidado, slug }: { evento: EventoPublico; convidado?: Convidado | null; slug: string }) {
   const cfg = (evento.config || {}) as Record<string, unknown>;
   const arraia = cfg.tema === "arraia" && evento.plano === "pro";
   const travado = !!convidado?.travado;
@@ -299,6 +300,7 @@ export default function RsvpForm({ evento, convidado }: { evento: EventoPublico;
               )}
 
               <div className="foot">CONTAMOS COM A SUA PRESENÇA</div>
+              <RodapeConfirmae slug={slug} titulo={evento.nome} imagem={evento.convite_imagem_url} />
             </>
           ) : (
             <div className="thanks">
@@ -342,6 +344,7 @@ export default function RsvpForm({ evento, convidado }: { evento: EventoPublico;
           {vai ? (<><p className="mt-4 text-gray-700">A gente se vê{dataFmt ? ` dia ${dataFmt}` : ""}! 🎉</p>{evento.local && <p className="mt-2 font-semibold text-green-700">📍 {evento.local}</p>}</>) : (<p className="mt-4 text-gray-700">Que pena! Fica para uma próxima. Obrigado por avisar 💚</p>)}
         </div>
         <Anuncios items={ads} />
+        <RodapeConfirmae slug={slug} titulo={evento.nome} imagem={evento.convite_imagem_url} />
       </Tela>
     );
   }
@@ -408,6 +411,7 @@ export default function RsvpForm({ evento, convidado }: { evento: EventoPublico;
           </div>
         )}
       </div>
+      <RodapeConfirmae slug={slug} titulo={evento.nome} imagem={evento.convite_imagem_url} />
       <Anuncios items={ads} />
     </Tela>
   );
