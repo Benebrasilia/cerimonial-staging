@@ -1,12 +1,42 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f3f4ef;
-  --foreground: #1f2937;
+  /* Estilo Apple: fundo quase-branco, texto quase-preto, verde da marca mantido */
+  --background: #fbfbfd;
+  --foreground: #1d1d1f;
 }
+
+html { scroll-behavior: smooth; }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.011em;
 }
+
+h1, h2, h3, h4 { letter-spacing: -0.022em; }
+
+a, button, input, select, textarea {
+  transition: background-color .18s ease, color .18s ease, border-color .18s ease,
+    box-shadow .18s ease, transform .12s ease, opacity .18s ease;
+}
+
+button:active { transform: scale(0.985); }
+
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(10, 124, 57, 0.25);
+  border-radius: 10px;
+}
+
+::selection { background: rgba(10, 124, 57, 0.18); }
+
+* { scrollbar-width: thin; scrollbar-color: #c7c7cc transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: #c7c7cc; border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: #aeaeb2; background-clip: content-box; }
