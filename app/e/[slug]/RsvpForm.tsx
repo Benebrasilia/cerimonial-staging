@@ -1,5 +1,6 @@
 "use client";
 import RodapeConfirmae from "@/app/_components/RodapeConfirmae";
+import QRConvite from "@/app/_components/QRConvite";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase";
@@ -212,6 +213,9 @@ export default function RsvpForm({ evento, convidado, slug }: { evento: EventoPu
   }
 
   const dataFmt = formatarData(evento.data);
+  const tokenURL = typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("c") || "") : "";
+  const baseOrigin = typeof window !== "undefined" ? window.location.origin : "https://confirmae.io";
+  const qrLink = meuLink || (tokenURL ? `${baseOrigin}/e/${slug}?c=${tokenURL}` : "");
 
   // ---------------- TEMA ARRAIÁ ----------------
   if (arraia) {
@@ -329,6 +333,7 @@ export default function RsvpForm({ evento, convidado, slug }: { evento: EventoPu
                 </>
               ) : (<p>Que pena! Fica para uma próxima. Obrigado por avisar 💚</p>)}
               {meuLink && (<div style={{ marginTop: 14, padding: "10px 12px", background: "rgba(255,255,255,.15)", borderRadius: 10, fontSize: 13 }}>Seu link pessoal (salve para alterar depois):<br /><a href={meuLink} style={{ color: "#ead06a", wordBreak: "break-all", fontWeight: 700 }}>{meuLink}</a></div>)}
+              {qrLink && <QRConvite valor={qrLink} titulo={evento.nome} nome={nome} />}
             </div>
           )}
         </div>
@@ -360,6 +365,7 @@ export default function RsvpForm({ evento, convidado, slug }: { evento: EventoPu
           {vai ? (<><p className="mt-4 text-gray-700">A gente se vê{dataFmt ? ` dia ${dataFmt}` : ""}! 🎉</p>{evento.local && <p className="mt-2 font-semibold text-green-700">📍 {evento.local}</p>}</>) : (<p className="mt-4 text-gray-700">Que pena! Fica para uma próxima. Obrigado por avisar 💚</p>)}
         </div>
         {meuLink && (<div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-3 text-center text-sm"><p className="text-gray-700">Seu link pessoal (salve para alterar sua resposta depois):</p><a href={meuLink} className="mt-1 block break-all font-semibold text-green-700">{meuLink}</a></div>)}
+        {qrLink && <QRConvite valor={qrLink} titulo={evento.nome} nome={nome} />}
         <Anuncios items={ads} />
         <RodapeConfirmae slug={slug} titulo={evento.nome} imagem={evento.convite_imagem_url} />
       </Tela>
